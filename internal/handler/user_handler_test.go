@@ -82,10 +82,9 @@ func TestUserHandler_GetMe(t *testing.T) {
 	t.Run("successful retrieval", func(t *testing.T) {
 		userID := int32(1)
 		expectedUser := &domain.User{
-			ID:        userID,
-			FirstName: "John",
-			LastName:  "Doe",
-			Email:     "john@example.com",
+			ID: userID,
+
+			Email: "john@example.com",
 		}
 
 		mockService.On("GetByID", mock.Anything, userID).Return(expectedUser, nil).Once()
@@ -145,10 +144,9 @@ func TestUserHandler_UpdateMe(t *testing.T) {
 		}
 
 		updatedUser := &domain.User{
-			ID:        userID,
-			FirstName: newFirstName,
-			LastName:  "Doe",
-			Email:     "jane@example.com",
+			ID: userID,
+
+			Email: "jane@example.com",
 		}
 
 		mockService.On("Update", mock.Anything, userID, mock.AnythingOfType("*domain.UpdateUserRequest")).

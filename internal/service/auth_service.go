@@ -36,12 +36,10 @@ func NewAuthService(userRepo repository.UserRepository, jwtManager *jwt.Manager)
 }
 
 func (s *authService) Register(ctx context.Context, req *domain.RegisterRequest) (*domain.AuthResponse, error) {
-	// Validate password strength
 	if err := password.Validate(req.Password); err != nil {
 		return nil, err
 	}
 
-	// Check if email already exists
 	exists, err := s.userRepo.EmailExists(ctx, req.Email)
 	if err != nil {
 		return nil, err
@@ -50,18 +48,13 @@ func (s *authService) Register(ctx context.Context, req *domain.RegisterRequest)
 		return nil, domain.ErrEmailAlreadyExists
 	}
 
-	// Hash password
 	hashedPassword, err := password.Hash(req.Password)
 	if err != nil {
 		return nil, err
 	}
 
-	// Create user
 	user := &domain.User{
-		FirstName:   req.FirstName,
-		LastName:    req.LastName,
-		Email:       req.Email,
-		PhoneNumber: req.PhoneNumber,
+		Email: req.Email,
 	}
 
 	createdUser, err := s.userRepo.Create(ctx, user, hashedPassword)

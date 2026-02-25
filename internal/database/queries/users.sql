@@ -1,13 +1,9 @@
 -- name: CreateUser :one
 INSERT INTO users (
-    first_name,
-    last_name,
     email,
-    phone_number,
-    password_hash,
-    linkedin_id
+    password_hash
 ) VALUES (
-    $1, $2, $3, $4, $5, $6
+    $1, $2
 ) RETURNING *;
 
 -- name: GetUserByID :one
