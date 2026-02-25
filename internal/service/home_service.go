@@ -34,11 +34,13 @@ type HomeService interface {
 }
 
 type homeService struct {
-	homeRepo repository.HomeRepository
+	homeRepo     repository.HomeRepository
+	notifService NotificationService
 }
 
-func NewHomeService(homeRepo repository.HomeRepository) HomeService {
-	return &homeService{homeRepo: homeRepo}
+// NewHomeService now requires a NotificationService for firing notifications.
+func NewHomeService(homeRepo repository.HomeRepository, notifService NotificationService) HomeService {
+	return &homeService{homeRepo: homeRepo, notifService: notifService}
 }
 
 // ─────────────────────────────────────────
@@ -57,7 +59,13 @@ func (s *homeService) GetHomeScreenData(ctx context.Context, userID int32) (*dom
 	}
 
 	now := time.Now()
-	weekStart := now.AddDate(0, 0, -int(now.Weekday()))
+	weekday := int(now.Weekday())
+	if weekday == 0 {
+		weekday = 7
+	}
+	weekStart := now.AddDate(0, 0, -(weekday - 1))
+	weekStart = time.Date(weekStart.Year(), weekStart.Month(), weekStart.Day(), 0, 0, 0, 0, weekStart.Location())
+
 	weeklyProgress, err := s.homeRepo.GetProgressSummary(ctx, userID, weekStart, now)
 	if err != nil {
 		return nil, err
@@ -69,7 +77,6 @@ func (s *homeService) GetHomeScreenData(ctx context.Context, userID int32) (*dom
 		return nil, err
 	}
 
-	// Show only the 6 most recent badges on home screen
 	recentBadges := badges
 	if len(recentBadges) > 6 {
 		recentBadges = recentBadges[:6]
@@ -94,7 +101,6 @@ func (s *homeService) GetHomeScreenData(ctx context.Context, userID int32) (*dom
 // ─────────────────────────────────────────
 
 func (s *homeService) StartSession(ctx context.Context, userID int32, req *domain.StartSessionRequest) (*domain.FocusSession, error) {
-	// Check for existing active/paused session
 	existing, err := s.homeRepo.GetActiveSession(ctx, userID)
 	if err != nil {
 		return nil, err
@@ -102,7 +108,6 @@ func (s *homeService) StartSession(ctx context.Context, userID int32, req *domai
 	if existing != nil {
 		return nil, response.ErrSessionAlreadyActive
 	}
-
 	return s.homeRepo.CreateSession(ctx, userID, req.DurationSeconds)
 }
 
@@ -154,62 +159,65 @@ func (s *homeService) EndSession(ctx context.Context, userID int32, sessionID in
 		return nil, err
 	}
 
-	// Post-session side effects (streak + progress + badges) only on completion
+	// Run side effects in a goroutine so the response is returned immediately
 	if completed {
-		s.handleSessionCompleted(ctx, userID, elapsed, now)
+		go s.handleSessionCompleted(context.Background(), userID, elapsed, now)
 	}
 
 	return updatedSession, nil
 }
 
-// handleSessionCompleted updates streak, daily progress, and checks for new badges.
-// Errors here are non-fatal — we log them but don't fail the request.
+// handleSessionCompleted updates streak, progress, badges and fires notifications.
+// Runs in a goroutine — errors are non-fatal.
 func (s *homeService) handleSessionCompleted(ctx context.Context, userID int32, focusSeconds int32, completedAt time.Time) {
-	// Update daily progress
+	// 1. Update daily progress
 	today := time.Date(completedAt.Year(), completedAt.Month(), completedAt.Day(), 0, 0, 0, 0, completedAt.Location())
 	_ = s.homeRepo.UpsertDailyProgress(ctx, userID, today, focusSeconds, 1)
 
-	// Update streak
+	// 2. Update streak
 	streak, err := s.homeRepo.GetStreak(ctx, userID)
+	newStreakVal := int32(1)
 	if err == nil {
-		newStreak := s.calculateNewStreak(streak, today)
-		_, _ = s.homeRepo.UpsertStreak(ctx, userID, newStreak, max32(newStreak, streak.LongestStreak), &today)
-		streak.CurrentStreak = newStreak // for badge check below
+		newStreakVal = s.calculateNewStreak(streak, today)
+		updatedStreak, err := s.homeRepo.UpsertStreak(ctx, userID, newStreakVal, max32(newStreakVal, streak.LongestStreak), &today)
+		if err == nil {
+			streak = updatedStreak
+		}
 	}
 
-	// Check and award badges
-	_ = s.checkAndAwardBadges(ctx, userID, streak)
+	// 3. Notify session completed
+	s.notifService.NotifySessionCompleted(ctx, userID, focusSeconds)
+
+	// 4. Notify streak milestone if applicable
+	s.notifService.NotifyStreakMilestone(ctx, userID, newStreakVal)
+
+	// 5. Check badges and notify for each new one earned
+	s.checkAndAwardBadges(ctx, userID, streak)
 }
 
 func (s *homeService) calculateNewStreak(streak *domain.Streak, today time.Time) int32 {
 	if streak.LastSessionDate == nil {
 		return 1
 	}
-
 	lastDate := *streak.LastSessionDate
 	lastDate = time.Date(lastDate.Year(), lastDate.Month(), lastDate.Day(), 0, 0, 0, 0, lastDate.Location())
 	diff := int(today.Sub(lastDate).Hours() / 24)
-
 	switch diff {
 	case 0:
-		// Same day — streak unchanged
 		return streak.CurrentStreak
 	case 1:
-		// Consecutive day — increment
 		return streak.CurrentStreak + 1
 	default:
-		// Streak broken
 		return 1
 	}
 }
 
-func (s *homeService) checkAndAwardBadges(ctx context.Context, userID int32, streak *domain.Streak) error {
+func (s *homeService) checkAndAwardBadges(ctx context.Context, userID int32, streak *domain.Streak) {
 	definitions, err := s.homeRepo.GetAllBadgeDefinitions(ctx)
 	if err != nil {
-		return err
+		return
 	}
 
-	// Fetch aggregate stats for other criteria types
 	now := time.Now()
 	allTime, _ := s.homeRepo.GetProgressSummary(ctx, userID, time.Time{}, now)
 
@@ -241,12 +249,16 @@ func (s *homeService) checkAndAwardBadges(ctx context.Context, userID int32, str
 		}
 
 		if earned {
-			_ = s.homeRepo.AwardBadge(ctx, userID, def.ID)
+			if err := s.homeRepo.AwardBadge(ctx, userID, def.ID); err == nil {
+				s.notifService.NotifyBadgeEarned(ctx, userID, def.Name)
+			}
 		}
 	}
-
-	return nil
 }
+
+// ─────────────────────────────────────────
+// Remaining methods
+// ─────────────────────────────────────────
 
 func (s *homeService) GetActiveSession(ctx context.Context, userID int32) (*domain.FocusSession, error) {
 	return s.homeRepo.GetActiveSession(ctx, userID)
@@ -259,17 +271,9 @@ func (s *homeService) GetSessionHistory(ctx context.Context, userID int32, limit
 	return s.homeRepo.GetUserSessionHistory(ctx, userID, limit, offset)
 }
 
-// ─────────────────────────────────────────
-// Streaks
-// ─────────────────────────────────────────
-
 func (s *homeService) GetStreak(ctx context.Context, userID int32) (*domain.Streak, error) {
 	return s.homeRepo.GetStreak(ctx, userID)
 }
-
-// ─────────────────────────────────────────
-// Badges
-// ─────────────────────────────────────────
 
 func (s *homeService) GetUserBadges(ctx context.Context, userID int32) ([]domain.UserBadge, error) {
 	return s.homeRepo.GetUserBadges(ctx, userID)
@@ -278,10 +282,6 @@ func (s *homeService) GetUserBadges(ctx context.Context, userID int32) ([]domain
 func (s *homeService) GetAllBadges(ctx context.Context) ([]domain.BadgeDefinition, error) {
 	return s.homeRepo.GetAllBadgeDefinitions(ctx)
 }
-
-// ─────────────────────────────────────────
-// Progress
-// ─────────────────────────────────────────
 
 func (s *homeService) GetProgressSummary(ctx context.Context, userID int32, period string) (*domain.ProgressSummary, error) {
 	now := time.Now()
@@ -292,7 +292,7 @@ func (s *homeService) GetProgressSummary(ctx context.Context, userID int32, peri
 		from = time.Date(now.Year(), now.Month(), 1, 0, 0, 0, 0, now.Location())
 	case "yearly":
 		from = time.Date(now.Year(), 1, 1, 0, 0, 0, 0, now.Location())
-	default: // weekly
+	default:
 		period = "weekly"
 		weekday := int(now.Weekday())
 		if weekday == 0 {

@@ -17,8 +17,7 @@ func TestJobs_Create(t *testing.T) {
 	ctx := context.Background()
 
 	user := &domain.User{
-		FirstName:   "Jane",
-		LastName:    "Doe",
+
 		Email:       "jane.Doe@test.com",
 		PhoneNumber: stringPtr("+234188399439"),
 	}
@@ -48,8 +47,7 @@ func TestJobs_Update(t *testing.T) {
 	ctx := context.Background()
 
 	user := &domain.User{
-		FirstName:   "John",
-		LastName:    "Doe",
+
 		Email:       "john.Doe@test.com",
 		PhoneNumber: stringPtr("+234188399439"),
 	}
@@ -99,8 +97,7 @@ func TestJobs_Delete(t *testing.T) {
 	userRepo := NewUserRepository(pool)
 	ctx := context.Background()
 	user := &domain.User{
-		FirstName:   "Kidominat",
-		LastName:    "Doe",
+
 		Email:       "kiddo.Doe@test.com",
 		PhoneNumber: stringPtr("+234188399439"),
 	}

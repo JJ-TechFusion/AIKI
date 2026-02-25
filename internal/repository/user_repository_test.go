@@ -46,8 +46,7 @@ func TestUserRepository_Create(t *testing.T) {
 	ctx := context.Background()
 
 	user := &domain.User{
-		FirstName:   "John",
-		LastName:    "Doe",
+
 		Email:       "john.doe@test.com",
 		PhoneNumber: stringPtr("+1234567890"),
 	}
@@ -70,9 +69,8 @@ func TestUserRepository_GetByID(t *testing.T) {
 
 	// Create a user first
 	user := &domain.User{
-		FirstName: "Jane",
-		LastName:  "Smith",
-		Email:     "jane.smith@test.com",
+
+		Email: "jane.smith@test.com",
 	}
 	createdUser, err := repo.Create(ctx, user, "hashed_password")
 	require.NoError(t, err)
@@ -95,9 +93,8 @@ func TestUserRepository_GetByEmail(t *testing.T) {
 
 	// Create a user first
 	user := &domain.User{
-		FirstName: "Bob",
-		LastName:  "Johnson",
-		Email:     "bob.johnson@test.com",
+
+		Email: "bob.johnson@test.com",
 	}
 	createdUser, err := repo.Create(ctx, user, "hashed_password")
 	require.NoError(t, err)
@@ -120,9 +117,8 @@ func TestUserRepository_Update(t *testing.T) {
 
 	// Create a user first
 	user := &domain.User{
-		FirstName: "Alice",
-		LastName:  "Williams",
-		Email:     "alice.williams@test.com",
+
+		Email: "alice.williams@test.com",
 	}
 	createdUser, err := repo.Create(ctx, user, "hashed_password")
 	require.NoError(t, err)
@@ -151,9 +147,8 @@ func TestUserRepository_EmailExists(t *testing.T) {
 
 	// Create a user
 	user := &domain.User{
-		FirstName: "Test",
-		LastName:  "User",
-		Email:     email,
+
+		Email: email,
 	}
 	_, err = repo.Create(ctx, user, "hashed_password")
 	require.NoError(t, err)
@@ -171,9 +166,8 @@ func TestUserRepository_RefreshTokens(t *testing.T) {
 
 	// Create a user first
 	user := &domain.User{
-		FirstName: "Token",
-		LastName:  "Tester",
-		Email:     "token.tester@test.com",
+
+		Email: "token.tester@test.com",
 	}
 	createdUser, err := repo.Create(ctx, user, "hashed_password")
 	require.NoError(t, err)
@@ -205,8 +199,7 @@ func TestUserRepository_CreateUserProfile(t *testing.T) {
 	ctx := context.Background()
 
 	user := &domain.User{
-		FirstName:   "John",
-		LastName:    "Doe",
+
 		Email:       "john.doe@test.com",
 		PhoneNumber: stringPtr("+1234567890"),
 	}
@@ -235,8 +228,7 @@ func TestUserRepository_GetUserProfile(t *testing.T) {
 	repo := NewUserRepository(pool)
 	ctx := context.Background()
 	user := &domain.User{
-		FirstName:   "John",
-		LastName:    "Doe",
+
 		Email:       "test@test.com",
 		PhoneNumber: stringPtr("+1234567890"),
 	}

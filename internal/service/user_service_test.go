@@ -21,9 +21,8 @@ func TestUserService_GetByID(t *testing.T) {
 	t.Run("successful retrieval", func(t *testing.T) {
 		userID := int32(1)
 		expectedUser := &domain.User{
-			ID:           userID,
-			FirstName:    "John",
-			LastName:     "Doe",
+			ID: userID,
+
 			Email:        "john@example.com",
 			PasswordHash: &passwd,
 			IsActive:     true,
@@ -63,9 +62,8 @@ func TestUserService_GetByEmail(t *testing.T) {
 	t.Run("successful retrieval", func(t *testing.T) {
 		email := "john@example.com"
 		expectedUser := &domain.User{
-			ID:           1,
-			FirstName:    "John",
-			LastName:     "Doe",
+			ID: 1,
+
 			Email:        email,
 			PasswordHash: &passwd,
 			IsActive:     true,
@@ -111,9 +109,8 @@ func TestUserService_Update(t *testing.T) {
 		}
 
 		updatedUser := &domain.User{
-			ID:           userID,
-			FirstName:    newFirstName,
-			LastName:     "Doe",
+			ID: userID,
+
 			Email:        "jane@example.com",
 			PhoneNumber:  &newPhone,
 			PasswordHash: &passwd,

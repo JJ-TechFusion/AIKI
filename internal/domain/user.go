@@ -7,8 +7,8 @@ import (
 // User represents a user in the system
 type User struct {
 	ID           int32     `json:"id"`
-	FirstName    string    `json:"first_name"`
-	LastName     string    `json:"last_name"`
+	FirstName    *string   `json:"first_name"`
+	LastName     *string   `json:"last_name"`
 	Email        string    `json:"email"`
 	PhoneNumber  *string   `json:"phone_number,omitempty"`
 	PasswordHash *string   `json:"-"`                     // Never expose password hash, now nullable
@@ -35,11 +35,8 @@ type UserProfileRequest struct {
 
 // RegisterRequest represents the request to register a new user
 type RegisterRequest struct {
-	FirstName   string  `json:"first_name" validate:"required,min=2,max=100"`
-	LastName    string  `json:"last_name" validate:"required,min=2,max=100"`
-	Email       string  `json:"email" validate:"required,email"`
-	PhoneNumber *string `json:"phone_number,omitempty" validate:"omitempty,min=10,max=20"`
-	Password    string  `json:"password" validate:"required,min=8,max=100"`
+	Email    string `json:"email" validate:"required,email"`
+	Password string `json:"password" validate:"required,min=8,max=100"`
 }
 
 // LoginRequest represents the request to login

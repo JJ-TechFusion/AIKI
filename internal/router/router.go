@@ -8,27 +8,22 @@ import (
 	"github.com/labstack/echo/v4"
 )
 
-// Setup configures all routes for the application
 func Setup(
 	e *echo.Echo,
 	authHandler *handler.AuthHandler,
 	userHandler *handler.UserHandler,
 	jobHandler *handler.JobHandler,
 	homeHandler *handler.HomeHandler,
+	notifHandler *handler.NotificationHandler,
 	jwtManager *jwt.Manager,
 ) {
-	// API v1 group
 	api := e.Group("/api/v1")
 
-	// Health check (no auth required)
 	api.GET("/health", func(c echo.Context) error {
-		return c.JSON(200, map[string]string{
-			"status":  "ok",
-			"service": "aiki-api",
-		})
+		return c.JSON(200, map[string]string{"status": "ok", "service": "aiki-api"})
 	})
 
-	// Auth routes (no auth required)
+	// Auth
 	auth := api.Group("/auth")
 	{
 		auth.POST("/register", authHandler.Register)
@@ -36,13 +31,12 @@ func Setup(
 		auth.POST("/refresh", authHandler.RefreshToken)
 		auth.POST("/logout", authHandler.Logout)
 		auth.GET("/linkedin/login", authHandler.LinkedInLogin)
-		// auth.GET("/linkedin/callback", authHandler.LinkedInCallback) // TODO: add New LinkedIn callback route
 		auth.POST("/forgot-password", authHandler.ForgottenPassword)
 		auth.POST("/forgot-password/validate", authHandler.ValidateForgottenPasswordOTP)
 		auth.POST("/reset-password", authHandler.ResetPassword)
 	}
 
-	// User routes (auth required)
+	// Users
 	users := api.Group("/users")
 	users.Use(middleware.Auth(jwtManager))
 	{
@@ -53,7 +47,7 @@ func Setup(
 		users.POST("/upload/cv", userHandler.UploadCV)
 	}
 
-	// Job routes (auth required)
+	// Jobs
 	jobs := api.Group("/jobs")
 	jobs.Use(middleware.Auth(jwtManager))
 	{
@@ -64,14 +58,14 @@ func Setup(
 		jobs.DELETE("/:id", jobHandler.DeleteJob)
 	}
 
-	// Home screen (auth required)
+	// Home screen
 	home := api.Group("/home")
 	home.Use(middleware.Auth(jwtManager))
 	{
 		home.GET("", homeHandler.GetHomeScreen)
 	}
 
-	// Focus sessions (auth required)
+	// Focus sessions
 	sessions := api.Group("/sessions")
 	sessions.Use(middleware.Auth(jwtManager))
 	{
@@ -83,14 +77,14 @@ func Setup(
 		sessions.PATCH("/:id/end", homeHandler.EndSession)
 	}
 
-	// Streaks (auth required)
+	// Streaks
 	streaks := api.Group("/streaks")
 	streaks.Use(middleware.Auth(jwtManager))
 	{
 		streaks.GET("", homeHandler.GetStreak)
 	}
 
-	// Badges (auth required)
+	// Badges
 	badges := api.Group("/badges")
 	badges.Use(middleware.Auth(jwtManager))
 	{
@@ -98,10 +92,21 @@ func Setup(
 		badges.GET("/me", homeHandler.GetUserBadges)
 	}
 
-	// Progress stats (auth required)
+	// Progress
 	progress := api.Group("/progress")
 	progress.Use(middleware.Auth(jwtManager))
 	{
 		progress.GET("", homeHandler.GetProgress)
+	}
+
+	// Notifications
+	notifs := api.Group("/notifications")
+	notifs.Use(middleware.Auth(jwtManager))
+	{
+		notifs.GET("", notifHandler.GetNotifications)
+		notifs.GET("/unread-count", notifHandler.GetUnreadCount)
+		notifs.PATCH("/read-all", notifHandler.MarkAllRead)
+		notifs.PATCH("/:id/read", notifHandler.MarkRead)
+		notifs.DELETE("/:id", notifHandler.DeleteNotification)
 	}
 }

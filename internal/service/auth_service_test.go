@@ -109,16 +109,14 @@ func TestAuthService_Register(t *testing.T) {
 
 	t.Run("successful registration", func(t *testing.T) {
 		req := &domain.RegisterRequest{
-			FirstName: "John",
-			LastName:  "Doe",
-			Email:     "john@example.com",
-			Password:  "Password123!",
+
+			Email:    "john@example.com",
+			Password: "Password123!",
 		}
 
 		expectedUser := &domain.User{
-			ID:        1,
-			FirstName: req.FirstName,
-			LastName:  req.LastName,
+			ID: 1,
+
 			Email:     req.Email,
 			IsActive:  true,
 			CreatedAt: time.Now(),
@@ -143,10 +141,9 @@ func TestAuthService_Register(t *testing.T) {
 
 	t.Run("weak password", func(t *testing.T) {
 		req := &domain.RegisterRequest{
-			FirstName: "John",
-			LastName:  "Doe",
-			Email:     "john@example.com",
-			Password:  "weak",
+
+			Email:    "john@example.com",
+			Password: "weak",
 		}
 
 		_, err := service.Register(ctx, req)
@@ -156,10 +153,9 @@ func TestAuthService_Register(t *testing.T) {
 
 	t.Run("email already exists", func(t *testing.T) {
 		req := &domain.RegisterRequest{
-			FirstName: "John",
-			LastName:  "Doe",
-			Email:     "existing@example.com",
-			Password:  "Password123!",
+
+			Email:    "existing@example.com",
+			Password: "Password123!",
 		}
 
 		mockRepo.On("EmailExists", ctx, req.Email).Return(true, nil).Once()
@@ -185,9 +181,8 @@ func TestAuthService_Login(t *testing.T) {
 
 		hashedPassword, _ := password.Hash(req.Password)
 		existingUser := &domain.User{
-			ID:           1,
-			FirstName:    "John",
-			LastName:     "Doe",
+			ID: 1,
+
 			Email:        req.Email,
 			PasswordHash: &hashedPassword,
 			IsActive:     true,
@@ -255,11 +250,10 @@ func TestAuthService_RefreshToken(t *testing.T) {
 		refreshToken := "valid-refresh-token"
 		userID := int32(1)
 		user := &domain.User{
-			ID:        userID,
-			FirstName: "John",
-			LastName:  "Doe",
-			Email:     "john@example.com",
-			IsActive:  true,
+			ID: userID,
+
+			Email:    "john@example.com",
+			IsActive: true,
 		}
 
 		mockRepo.On("GetRefreshToken", ctx, refreshToken).Return(userID, nil).Once()

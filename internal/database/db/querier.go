@@ -13,12 +13,14 @@ type Querier interface {
 	CheckEmailExists(ctx context.Context, email string) (bool, error)
 	CreateFocusSession(ctx context.Context, arg CreateFocusSessionParams) (FocusSession, error)
 	CreateJob(ctx context.Context, arg CreateJobParams) (Job, error)
+	CreateNotification(ctx context.Context, arg CreateNotificationParams) (Notification, error)
 	CreateRefreshToken(ctx context.Context, arg CreateRefreshTokenParams) (RefreshToken, error)
 	CreateUser(ctx context.Context, arg CreateUserParams) (User, error)
 	CreateUserProfile(ctx context.Context, arg CreateUserProfileParams) (UserProfile, error)
 	DeactivateUser(ctx context.Context, id int32) error
 	DeleteExpiredTokens(ctx context.Context) error
 	DeleteJobByID(ctx context.Context, id int32) error
+	DeleteNotification(ctx context.Context, arg DeleteNotificationParams) error
 	DeleteRefreshToken(ctx context.Context, token string) error
 	DeleteUserRefreshTokens(ctx context.Context, userID int32) error
 	GetActiveSession(ctx context.Context, userID int32) (FocusSession, error)
@@ -29,12 +31,17 @@ type Querier interface {
 	GetProgressSummary(ctx context.Context, arg GetProgressSummaryParams) (GetProgressSummaryRow, error)
 	GetRefreshToken(ctx context.Context, token string) (RefreshToken, error)
 	GetStreak(ctx context.Context, userID int32) (Streak, error)
+	GetUnreadCount(ctx context.Context, userID int32) (int64, error)
 	GetUserBadgeCount(ctx context.Context, userID int32) (int64, error)
 	GetUserBadges(ctx context.Context, userID int32) ([]GetUserBadgesRow, error)
 	GetUserByEmail(ctx context.Context, email string) (User, error)
 	GetUserByID(ctx context.Context, id int32) (User, error)
+	GetUserNotifications(ctx context.Context, arg GetUserNotificationsParams) ([]Notification, error)
 	GetUserProfileByUserID(ctx context.Context, userID int32) (UserProfile, error)
 	GetUserSessionHistory(ctx context.Context, arg GetUserSessionHistoryParams) ([]FocusSession, error)
+	GetUsersWithNoSessionToday(ctx context.Context) ([]int32, error)
+	MarkAllNotificationsRead(ctx context.Context, userID int32) error
+	MarkNotificationRead(ctx context.Context, arg MarkNotificationReadParams) error
 	UpdateFocusSession(ctx context.Context, arg UpdateFocusSessionParams) (FocusSession, error)
 	UpdateJobByID(ctx context.Context, arg UpdateJobByIDParams) error
 	UpdateUser(ctx context.Context, arg UpdateUserParams) (User, error)

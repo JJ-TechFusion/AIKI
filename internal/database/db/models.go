@@ -53,6 +53,16 @@ type Job struct {
 	UpdatedAt   pgtype.Timestamp `json:"updated_at"`
 }
 
+type Notification struct {
+	ID        int32            `json:"id"`
+	UserID    int32            `json:"user_id"`
+	Type      string           `json:"type"`
+	Title     string           `json:"title"`
+	Message   string           `json:"message"`
+	IsRead    bool             `json:"is_read"`
+	CreatedAt pgtype.Timestamp `json:"created_at"`
+}
+
 type RefreshToken struct {
 	ID        int32            `json:"id"`
 	UserID    int32            `json:"user_id"`

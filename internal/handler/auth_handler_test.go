@@ -86,20 +86,16 @@ func TestAuthHandler_Register(t *testing.T) {
 
 	t.Run("successful registration", func(t *testing.T) {
 		reqBody := domain.RegisterRequest{
-			FirstName: "John",
-			LastName:  "Doe",
-			Email:     "john@example.com",
-			Password:  "Password123!",
+			Email:    "john@example.com",
+			Password: "Password123!",
 		}
 
 		authResp := &domain.AuthResponse{
 			AccessToken:  "access-token",
 			RefreshToken: "refresh-token",
 			User: &domain.User{
-				ID:        1,
-				FirstName: reqBody.FirstName,
-				LastName:  reqBody.LastName,
-				Email:     reqBody.Email,
+				ID:    1,
+				Email: reqBody.Email,
 			},
 		}
 
@@ -133,7 +129,6 @@ func TestAuthHandler_Register(t *testing.T) {
 
 	t.Run("validation error", func(t *testing.T) {
 		reqBody := domain.RegisterRequest{
-			FirstName: "John",
 			// Missing required fields
 		}
 

@@ -44,17 +44,14 @@ func NewUserRepository(dbPool *pgxpool.Pool) UserRepository {
 
 func (r *userRepository) Create(ctx context.Context, user *domain.User, passwordHash string) (*domain.User, error) {
 	query := `
-		INSERT INTO users (first_name, last_name, email, phone_number, password_hash)
-		VALUES ($1, $2, $3, $4, $5)
+		INSERT INTO users (email, password_hash)
+		VALUES ($1, $2)
 		RETURNING id, first_name, last_name, email, phone_number, is_active, created_at, updated_at
 	`
 
 	var createdUser domain.User
 	err := r.db.QueryRow(ctx, query,
-		user.FirstName,
-		user.LastName,
 		user.Email,
-		user.PhoneNumber,
 		passwordHash,
 	).Scan(
 		&createdUser.ID,
@@ -66,15 +63,12 @@ func (r *userRepository) Create(ctx context.Context, user *domain.User, password
 		&createdUser.CreatedAt,
 		&createdUser.UpdatedAt,
 	)
-
 	if err != nil {
-		// Check for unique constraint violation on email
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, domain.ErrUserAlreadyExists
 		}
 		return nil, err
 	}
-
 	return &createdUser, nil
 }
 
