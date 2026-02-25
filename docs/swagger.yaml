@@ -121,6 +121,46 @@ definitions:
     - email
     - password
     type: object
+  domain.Notification:
+    properties:
+      created_at:
+        type: string
+      id:
+        type: integer
+      is_read:
+        type: boolean
+      message:
+        type: string
+      title:
+        type: string
+      type:
+        $ref: '#/definitions/domain.NotificationType'
+      user_id:
+        type: integer
+    type: object
+  domain.NotificationSummary:
+    properties:
+      notifications:
+        items:
+          $ref: '#/definitions/domain.Notification'
+        type: array
+      unread_count:
+        type: integer
+    type: object
+  domain.NotificationType:
+    enum:
+    - session_completed
+    - streak_milestone
+    - badge_earned
+    - daily_reminder
+    - streak_warning
+    type: string
+    x-enum-varnames:
+    - NotificationTypeSessionCompleted
+    - NotificationTypeStreakMilestone
+    - NotificationTypeBadgeEarned
+    - NotificationTypeDailyReminder
+    - NotificationTypeStreakWarning
   domain.ProgressSummary:
     properties:
       days_active:
@@ -146,26 +186,12 @@ definitions:
     properties:
       email:
         type: string
-      first_name:
-        maxLength: 100
-        minLength: 2
-        type: string
-      last_name:
-        maxLength: 100
-        minLength: 2
-        type: string
       password:
         maxLength: 100
         minLength: 8
         type: string
-      phone_number:
-        maxLength: 20
-        minLength: 10
-        type: string
     required:
     - email
-    - first_name
-    - last_name
     - password
     type: object
   domain.SessionStatus:
@@ -723,6 +749,132 @@ paths:
       summary: Update a job
       tags:
       - jobs
+  /notifications:
+    get:
+      description: Returns paginated notifications and unread count for the authenticated
+        user
+      parameters:
+      - description: Limit (default 20)
+        in: query
+        name: limit
+        type: integer
+      - description: Offset (default 0)
+        in: query
+        name: offset
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/domain.NotificationSummary'
+              type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.Response'
+      security:
+      - BearerAuth: []
+      summary: Get notifications
+      tags:
+      - notifications
+  /notifications/{id}:
+    delete:
+      parameters:
+      - description: Notification ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.Response'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.Response'
+      security:
+      - BearerAuth: []
+      summary: Delete a notification
+      tags:
+      - notifications
+  /notifications/{id}/read:
+    patch:
+      parameters:
+      - description: Notification ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.Response'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.Response'
+      security:
+      - BearerAuth: []
+      summary: Mark a notification as read
+      tags:
+      - notifications
+  /notifications/read-all:
+    patch:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.Response'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.Response'
+      security:
+      - BearerAuth: []
+      summary: Mark all notifications as read
+      tags:
+      - notifications
+  /notifications/unread-count:
+    get:
+      description: Returns the number of unread notifications for the home screen
+        badge
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.Response'
+            - properties:
+                data:
+                  format: int32
+                  type: integer
+              type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.Response'
+      security:
+      - BearerAuth: []
+      summary: Get unread notification count
+      tags:
+      - notifications
   /progress:
     get:
       description: Returns focus time stats for the given period (weekly | monthly
@@ -1184,7 +1336,7 @@ paths:
       - users
 securityDefinitions:
   BearerAuth:
-    description: 'Type "Bearer" followed by your access token. Example: "Bearer eyJhbGc..."'
+    description: Type "Bearer" followed by your access token.
     in: header
     name: Authorization
     type: apiKey
