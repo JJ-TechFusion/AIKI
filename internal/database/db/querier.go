@@ -6,6 +6,8 @@ package db
 
 import (
 	"context"
+
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 type Querier interface {
@@ -21,13 +23,17 @@ type Querier interface {
 	DeleteExpiredTokens(ctx context.Context) error
 	DeleteJobByID(ctx context.Context, id int32) error
 	DeleteNotification(ctx context.Context, arg DeleteNotificationParams) error
+	DeleteOldCacheForUser(ctx context.Context, userID int32) error
 	DeleteRefreshToken(ctx context.Context, token string) error
 	DeleteUserRefreshTokens(ctx context.Context, userID int32) error
 	GetActiveSession(ctx context.Context, userID int32) (FocusSession, error)
 	GetAllBadgeDefinitions(ctx context.Context) ([]BadgeDefinition, error)
+	GetCachedJobByID(ctx context.Context, arg GetCachedJobByIDParams) (SerpJobCache, error)
+	GetCachedJobsByUserID(ctx context.Context, arg GetCachedJobsByUserIDParams) ([]SerpJobCache, error)
 	GetFocusSessionByID(ctx context.Context, id int32) (FocusSession, error)
 	GetJobByID(ctx context.Context, id int32) (Job, error)
 	GetJobs(ctx context.Context, userID int32) ([]Job, error)
+	GetLatestCacheFetchTime(ctx context.Context, userID int32) (pgtype.Timestamp, error)
 	GetProgressSummary(ctx context.Context, arg GetProgressSummaryParams) (GetProgressSummaryRow, error)
 	GetRefreshToken(ctx context.Context, token string) (RefreshToken, error)
 	GetStreak(ctx context.Context, userID int32) (Streak, error)
@@ -41,6 +47,7 @@ type Querier interface {
 	GetUserSessionHistory(ctx context.Context, arg GetUserSessionHistoryParams) ([]FocusSession, error)
 	GetUsersWithNoSessionToday(ctx context.Context) ([]int32, error)
 	MarkAllNotificationsRead(ctx context.Context, userID int32) error
+	MarkJobSavedToTracker(ctx context.Context, arg MarkJobSavedToTrackerParams) error
 	MarkNotificationRead(ctx context.Context, arg MarkNotificationReadParams) error
 	UpdateFocusSession(ctx context.Context, arg UpdateFocusSessionParams) (FocusSession, error)
 	UpdateJobByID(ctx context.Context, arg UpdateJobByIDParams) error
@@ -48,6 +55,7 @@ type Querier interface {
 	UpdateUserProfile(ctx context.Context, arg UpdateUserProfileParams) (UserProfile, error)
 	UploadUserCV(ctx context.Context, arg UploadUserCVParams) (UserProfile, error)
 	UpsertDailyProgress(ctx context.Context, arg UpsertDailyProgressParams) error
+	UpsertSerpJobCache(ctx context.Context, arg UpsertSerpJobCacheParams) (SerpJobCache, error)
 	UpsertStreak(ctx context.Context, arg UpsertStreakParams) (Streak, error)
 }
 

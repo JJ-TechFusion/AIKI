@@ -15,6 +15,7 @@ func Setup(
 	jobHandler *handler.JobHandler,
 	homeHandler *handler.HomeHandler,
 	notifHandler *handler.NotificationHandler,
+	serpHandler *handler.SerpJobHandler,
 	jwtManager *jwt.Manager,
 ) {
 	api := e.Group("/api/v1")
@@ -47,7 +48,7 @@ func Setup(
 		users.POST("/upload/cv", userHandler.UploadCV)
 	}
 
-	// Jobs
+	// Jobs (manual tracker)
 	jobs := api.Group("/jobs")
 	jobs.Use(middleware.Auth(jwtManager))
 	{
@@ -56,6 +57,10 @@ func Setup(
 		jobs.GET("/:id", jobHandler.GetJob)
 		jobs.PUT("/:id", jobHandler.UpdateJob)
 		jobs.DELETE("/:id", jobHandler.DeleteJob)
+
+		// Job recommendations via SerpApi
+		jobs.GET("/recommended", serpHandler.GetRecommendedJobs)
+		jobs.POST("/recommended/:id/save", serpHandler.SaveJobToTracker)
 	}
 
 	// Home screen

@@ -111,6 +111,19 @@ definitions:
       title:
         type: string
     type: object
+  domain.JobSearchResult:
+    properties:
+      fetched_at:
+        type: string
+      from_cache:
+        type: boolean
+      jobs:
+        items:
+          $ref: '#/definitions/domain.SerpJobCache'
+        type: array
+      total_count:
+        type: integer
+    type: object
   domain.LoginRequest:
     properties:
       email:
@@ -193,6 +206,35 @@ definitions:
     required:
     - email
     - password
+    type: object
+  domain.SerpJobCache:
+    properties:
+      company_name:
+        type: string
+      description:
+        type: string
+      external_id:
+        type: string
+      fetched_at:
+        type: string
+      id:
+        type: integer
+      link:
+        type: string
+      location:
+        type: string
+      platform:
+        type: string
+      posted_at:
+        type: string
+      salary:
+        type: string
+      saved_to_tracker:
+        type: boolean
+      title:
+        type: string
+      user_id:
+        type: integer
     type: object
   domain.SessionStatus:
     enum:
@@ -749,6 +791,71 @@ paths:
       summary: Update a job
       tags:
       - jobs
+  /jobs/recommended:
+    get:
+      description: Fetches jobs from SerpApi based on user profile (job title + experience
+        level). Returns cached results if fetched within 24 hours.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/domain.JobSearchResult'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.Response'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.Response'
+      security:
+      - BearerAuth: []
+      summary: Get recommended jobs
+      tags:
+      - job-search
+  /jobs/recommended/{id}/save:
+    post:
+      consumes:
+      - application/json
+      description: Saves a job from the recommended list into the user's job tracker
+      parameters:
+      - description: Cache job ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/domain.Job'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.Response'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.Response'
+      security:
+      - BearerAuth: []
+      summary: Save a recommended job to tracker
+      tags:
+      - job-search
   /notifications:
     get:
       description: Returns paginated notifications and unread count for the authenticated

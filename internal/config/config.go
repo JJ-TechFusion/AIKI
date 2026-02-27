@@ -14,6 +14,11 @@ type Config struct {
 	Redis    RedisConfig
 	JWT      JWTConfig
 	LinkedIn LinkedInConfig
+	SerpAPI  SerpConfig
+}
+
+type SerpConfig struct {
+	Key string
 }
 
 type ServerConfig struct {
@@ -85,6 +90,9 @@ func Load() (*Config, error) {
 			ClientID:          getEnv("LINKEDIN_CLIENT_ID", ""),
 			ClientSecret:      getEnv("LINKEDIN_CLIENT_SECRET", ""),
 			ClientCallbackUrl: getEnv("LINKEDIN_CALLBACK_URL", "http://localhost:%s/auth/linkedin/callback"),
+		},
+		SerpAPI: SerpConfig{
+			Key: getEnv("SERP_API_KEY", ""),
 		},
 	}
 

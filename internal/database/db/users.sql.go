@@ -22,35 +22,20 @@ func (q *Queries) CheckEmailExists(ctx context.Context, email string) (bool, err
 
 const createUser = `-- name: CreateUser :one
 INSERT INTO users (
-    first_name,
-    last_name,
     email,
-    phone_number,
-    password_hash,
-    linkedin_id
+    password_hash
 ) VALUES (
-    $1, $2, $3, $4, $5, $6
+    $1, $2
 ) RETURNING id, first_name, last_name, email, phone_number, password_hash, linkedin_id, is_active, created_at, updated_at
 `
 
 type CreateUserParams struct {
-	FirstName    string  `json:"first_name"`
-	LastName     string  `json:"last_name"`
 	Email        string  `json:"email"`
-	PhoneNumber  *string `json:"phone_number"`
 	PasswordHash *string `json:"password_hash"`
-	LinkedinID   *string `json:"linkedin_id"`
 }
 
 func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, error) {
-	row := q.db.QueryRow(ctx, createUser,
-		arg.FirstName,
-		arg.LastName,
-		arg.Email,
-		arg.PhoneNumber,
-		arg.PasswordHash,
-		arg.LinkedinID,
-	)
+	row := q.db.QueryRow(ctx, createUser, arg.Email, arg.PasswordHash)
 	var i User
 	err := row.Scan(
 		&i.ID,

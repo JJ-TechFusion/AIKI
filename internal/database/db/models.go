@@ -71,6 +71,22 @@ type RefreshToken struct {
 	CreatedAt pgtype.Timestamp `json:"created_at"`
 }
 
+type SerpJobCache struct {
+	ID             int32            `json:"id"`
+	UserID         int32            `json:"user_id"`
+	ExternalID     string           `json:"external_id"`
+	Title          string           `json:"title"`
+	CompanyName    *string          `json:"company_name"`
+	Location       *string          `json:"location"`
+	Description    *string          `json:"description"`
+	Link           *string          `json:"link"`
+	Platform       *string          `json:"platform"`
+	PostedAt       *string          `json:"posted_at"`
+	Salary         *string          `json:"salary"`
+	SavedToTracker bool             `json:"saved_to_tracker"`
+	FetchedAt      pgtype.Timestamp `json:"fetched_at"`
+}
+
 type Streak struct {
 	ID              int32            `json:"id"`
 	UserID          int32            `json:"user_id"`
@@ -82,8 +98,8 @@ type Streak struct {
 
 type User struct {
 	ID           int32            `json:"id"`
-	FirstName    string           `json:"first_name"`
-	LastName     string           `json:"last_name"`
+	FirstName    *string          `json:"first_name"`
+	LastName     *string          `json:"last_name"`
 	Email        string           `json:"email"`
 	PhoneNumber  *string          `json:"phone_number"`
 	PasswordHash *string          `json:"password_hash"`

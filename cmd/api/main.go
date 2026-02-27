@@ -18,6 +18,7 @@ import (
 	"aiki/internal/pkg/validator"
 	"aiki/internal/repository"
 	"aiki/internal/router"
+	"aiki/internal/serp"
 	"aiki/internal/service"
 
 	_ "aiki/docs"
@@ -65,13 +66,16 @@ func main() {
 	jobRepo := repository.NewJobRepository(db)
 	homeRepo := repository.NewHomeRepository(db)
 	notifRepo := repository.NewNotificationRepository(db)
+	serpRepo := repository.NewSerpJobRepository(db)
 
 	// Services
+	serpClient := serp.NewClient(cfg.SerpAPI.Key)
 	authService := service.NewAuthService(userRepo, jwtManager)
 	userService := service.NewUserService(userRepo)
 	jobService := service.NewJobService(jobRepo)
 	notifService := service.NewNotificationService(notifRepo)
 	homeService := service.NewHomeService(homeRepo, notifService)
+	serpJobService := service.NewSerpJobService(serpRepo, userRepo, jobRepo, serpClient)
 
 	// Echo
 	e := echo.New()
@@ -88,9 +92,10 @@ func main() {
 	jobHandler := handler.NewJobHandler(jobService, e.Validator)
 	homeHandler := handler.NewHomeHandler(homeService, e.Validator)
 	notifHandler := handler.NewNotificationHandler(notifService)
+	serpHandler := handler.NewSerpJobHandler(serpJobService)
 
 	// Routes
-	router.Setup(e, authHandler, userHandler, jobHandler, homeHandler, notifHandler, jwtManager)
+	router.Setup(e, authHandler, userHandler, jobHandler, homeHandler, notifHandler, serpHandler, jwtManager)
 
 	// Scheduler
 	sched := scheduler.NewScheduler(notifService)
@@ -116,5 +121,5 @@ func main() {
 	if err := e.Shutdown(ctx); err != nil {
 		log.Fatalf("Server forced to shutdown: %v", err)
 	}
-	log.Println("Server exited")
+	log.Println("Server exited!")
 }
