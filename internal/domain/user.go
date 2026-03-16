@@ -32,7 +32,7 @@ type UserProfileRequest struct {
 	FullName        string   `json:"full_name" validate:"required,min=7,max=200"`
 	CurrentJob      string   `json:"current_job" validate:"required,min=5,max=200"`
 	ExperienceLevel string   `json:"experience_level" validate:"required,min=5,max=200"`
-	Goals           []string `json:"goals" validate:"required,min=1"`
+	Goals           []string `json:"goals,omitempty" validate:"omitempty"`
 }
 
 // RegisterRequest represents the request to register a new user
