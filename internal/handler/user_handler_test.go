@@ -69,6 +69,14 @@ func (m *MockUserService) UpdateUserProfile(ctx context.Context, req domain.User
 	return args.Get(0).(*domain.UserProfile), args.Error(1)
 }
 
+func (m *MockUserService) GetUserCV(ctx context.Context, id int32) ([]byte, error) {
+	args := m.Called(ctx, id)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]byte), args.Error(1)
+}
+
 func (m *MockUserService) UploadUserCV(ctx context.Context, userID int32, data []byte) error {
 	args := m.Called(ctx, userID, data)
 	return args.Error(0)
@@ -252,6 +260,78 @@ func TestUserHandler_GetProfile(t *testing.T) {
 		c.Set("user_id", userID)
 
 		err := handler.GetProfile(c)
+
+		require.NoError(t, err)
+		assert.Equal(t, http.StatusNotFound, rec.Code)
+		mockService.AssertExpectations(t)
+	})
+}
+
+func TestUserHandler_GetCV(t *testing.T) {
+	e := setupEcho()
+	mockService := new(MockUserService)
+	handler := NewUserHandler(mockService, e.Validator)
+
+	t.Run("successful retrieval", func(t *testing.T) {
+		userID := int32(1)
+		expectedBytes := []byte("dummy pdf content")
+
+		mockService.On("GetUserCV", mock.Anything, userID).Return(expectedBytes, nil).Once()
+
+		req := httptest.NewRequest(http.MethodGet, "/users/cv", nil)
+		rec := httptest.NewRecorder()
+		c := e.NewContext(req, rec)
+		c.Set("user_id", userID)
+
+		err := handler.GetCV(c)
+
+		require.NoError(t, err)
+		assert.Equal(t, http.StatusOK, rec.Code)
+		assert.Equal(t, "application/pdf", rec.Header().Get("Content-Type"))
+		assert.Equal(t, expectedBytes, rec.Body.Bytes())
+		mockService.AssertExpectations(t)
+	})
+
+	t.Run("unauthorized - missing user_id", func(t *testing.T) {
+		req := httptest.NewRequest(http.MethodGet, "/users/cv", nil)
+		rec := httptest.NewRecorder()
+		c := e.NewContext(req, rec)
+
+		err := handler.GetCV(c)
+
+		require.NoError(t, err)
+		assert.Equal(t, http.StatusUnauthorized, rec.Code)
+	})
+
+	t.Run("cv not found", func(t *testing.T) {
+		userID := int32(1)
+
+		mockService.On("GetUserCV", mock.Anything, userID).Return(nil, domain.ErrUserNotFound).Once()
+
+		req := httptest.NewRequest(http.MethodGet, "/users/cv", nil)
+		rec := httptest.NewRecorder()
+		c := e.NewContext(req, rec)
+		c.Set("user_id", userID)
+
+		err := handler.GetCV(c)
+
+		require.NoError(t, err)
+		assert.Equal(t, http.StatusNotFound, rec.Code)
+		mockService.AssertExpectations(t)
+	})
+
+	t.Run("empty cv bytes", func(t *testing.T) {
+		userID := int32(1)
+		emptyBytes := []byte{}
+
+		mockService.On("GetUserCV", mock.Anything, userID).Return(emptyBytes, nil).Once()
+
+		req := httptest.NewRequest(http.MethodGet, "/users/cv", nil)
+		rec := httptest.NewRecorder()
+		c := e.NewContext(req, rec)
+		c.Set("user_id", userID)
+
+		err := handler.GetCV(c)
 
 		require.NoError(t, err)
 		assert.Equal(t, http.StatusNotFound, rec.Code)

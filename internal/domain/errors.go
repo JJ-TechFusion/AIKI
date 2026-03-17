@@ -25,6 +25,7 @@ var (
 	ErrFailedToCreateJob        = errors.New("failed to create job")
 	ErrFailedToUpdateJob        = errors.New("failed to update job")
 	ErrInvalidJobID             = errors.New("invalid job id")
+	ErrCVNotFound               = errors.New("cv not found")
 )
 
 // AppError represents an application error with HTTP status code
@@ -58,7 +59,7 @@ func GetHTTPStatus(err error) int {
 	}
 
 	switch {
-	case errors.Is(err, ErrUserNotFound):
+	case errors.Is(err, ErrUserNotFound), errors.Is(err, ErrCVNotFound):
 		return http.StatusNotFound
 	case errors.Is(err, ErrUserAlreadyExists), errors.Is(err, ErrEmailAlreadyExists):
 		return http.StatusConflict
