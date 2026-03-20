@@ -371,13 +371,11 @@ definitions:
       goals:
         items:
           type: string
-        minItems: 1
         type: array
     required:
     - current_job
     - experience_level
     - full_name
-    - goals
     type: object
   response.Response:
     properties:
@@ -1310,6 +1308,29 @@ paths:
       summary: Get user streak
       tags:
       - streaks
+  /users/cv:
+    get:
+      description: Download the currently authenticated user's uploaded CV
+      produces:
+      - application/pdf
+      responses:
+        "200":
+          description: CV contents
+          schema:
+            type: file
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.Response'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/response.Response'
+      security:
+      - BearerAuth: []
+      summary: Get user CV
+      tags:
+      - users
   /users/me:
     get:
       consumes:
@@ -1381,6 +1402,35 @@ paths:
       tags:
       - users
   /users/profile:
+    get:
+      consumes:
+      - application/json
+      description: Get the currently authenticated user's profile for onboarding tracking
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/domain.UserProfile'
+              type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.Response'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/response.Response'
+      security:
+      - BearerAuth: []
+      summary: Get user profile
+      tags:
+      - users
     patch:
       consumes:
       - application/json

@@ -1546,6 +1546,43 @@ const docTemplate = `{
                 }
             }
         },
+        "/users/cv": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Download the currently authenticated user's uploaded CV",
+                "produces": [
+                    "application/pdf"
+                ],
+                "tags": [
+                    "users"
+                ],
+                "summary": "Get user CV",
+                "responses": {
+                    "200": {
+                        "description": "CV contents",
+                        "schema": {
+                            "type": "file"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    }
+                }
+            }
+        },
         "/users/me": {
             "get": {
                 "security": [
@@ -1666,6 +1703,56 @@ const docTemplate = `{
             }
         },
         "/users/profile": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Get the currently authenticated user's profile for onboarding tracking",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "users"
+                ],
+                "summary": "Get user profile",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/response.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/domain.UserProfile"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    }
+                }
+            },
             "post": {
                 "security": [
                     {
@@ -2382,8 +2469,7 @@ const docTemplate = `{
             "required": [
                 "current_job",
                 "experience_level",
-                "full_name",
-                "goals"
+                "full_name"
             ],
             "properties": {
                 "current_job": {
@@ -2403,7 +2489,6 @@ const docTemplate = `{
                 },
                 "goals": {
                     "type": "array",
-                    "minItems": 1,
                     "items": {
                         "type": "string"
                     }
