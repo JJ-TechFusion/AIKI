@@ -97,8 +97,16 @@ func (m *MockUserRepository) DeleteUserRefreshTokens(ctx context.Context, userID
 	return args.Error(0)
 }
 func (m *MockUserRepository) UploadCV(ctx context.Context, userID int32, data []byte) error {
-	//TODO implement me
-	panic("implement me")
+	args := m.Called(ctx, userID, data)
+	return args.Error(0)
+}
+
+func (m *MockUserRepository) GetUserCV(ctx context.Context, userID int32) ([]byte, error) {
+	args := m.Called(ctx, userID)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]byte), args.Error(1)
 }
 
 func (m *MockUserRepository) GetByLinkedInID(ctx context.Context, linkedInID string) (*domain.User, error) {

@@ -51,6 +51,19 @@ func (q *Queries) CreateUserProfile(ctx context.Context, arg CreateUserProfilePa
 	return i, err
 }
 
+const getUserCV = `-- name: GetUserCV :one
+SELECT cv FROM user_profile
+WHERE user_id = $1
+LIMIT 1
+`
+
+func (q *Queries) GetUserCV(ctx context.Context, userID int32) ([]byte, error) {
+	row := q.db.QueryRow(ctx, getUserCV, userID)
+	var cv []byte
+	err := row.Scan(&cv)
+	return cv, err
+}
+
 const getUserProfileByUserID = `-- name: GetUserProfileByUserID :one
 SELECT id, user_id, cv, full_name, current_job, experience_level, goals, updated_at FROM user_profile
 WHERE user_id = $1

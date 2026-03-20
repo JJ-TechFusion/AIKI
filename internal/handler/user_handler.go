@@ -229,3 +229,31 @@ func (h *UserHandler) UploadCV(c echo.Context) error {
 
 	return response.Success(c, http.StatusOK, "file uploaded successfully", nil)
 }
+
+// GetCV godoc
+// @Summary      Get user CV
+// @Description  Download the currently authenticated user's uploaded CV
+// @Tags         users
+// @Produce      application/pdf
+// @Security     BearerAuth
+// @Success      200 {file} file "CV contents"
+// @Failure      401 {object} response.Response
+// @Failure      404 {object} response.Response
+// @Router       /users/cv [get]
+func (h *UserHandler) GetCV(c echo.Context) error {
+	id, ok := c.Get("user_id").(int32)
+	if !ok {
+		return response.Error(c, domain.ErrUnauthorized)
+	}
+
+	cvBytes, err := h.userService.GetUserCV(c.Request().Context(), id)
+	if err != nil {
+		return response.Error(c, err)
+	}
+
+	if len(cvBytes) == 0 {
+		return response.Error(c, domain.ErrCVNotFound)
+	}
+
+	return c.Blob(http.StatusOK, "application/pdf", cvBytes)
+}

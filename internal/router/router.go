@@ -48,6 +48,7 @@ func Setup(
 		users.GET("/profile", userHandler.GetProfile)
 		users.PATCH("/profile", userHandler.UpdateProfile)
 		users.POST("/upload/cv", userHandler.UploadCV)
+		users.GET("/cv", userHandler.GetCV)
 	}
 
 	// Jobs (manual tracker)

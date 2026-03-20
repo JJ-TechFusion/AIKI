@@ -42,6 +42,7 @@ type Querier interface {
 	GetUserBadges(ctx context.Context, userID int32) ([]GetUserBadgesRow, error)
 	GetUserByEmail(ctx context.Context, email string) (User, error)
 	GetUserByID(ctx context.Context, id int32) (User, error)
+	GetUserCV(ctx context.Context, userID int32) ([]byte, error)
 	GetUserNotifications(ctx context.Context, arg GetUserNotificationsParams) ([]Notification, error)
 	GetUserProfileByUserID(ctx context.Context, userID int32) (UserProfile, error)
 	GetUserSessionHistory(ctx context.Context, arg GetUserSessionHistoryParams) ([]FocusSession, error)

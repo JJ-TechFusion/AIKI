@@ -33,3 +33,8 @@ SET
     updated_at = NOW()
 WHERE user_id = $1
 RETURNING *;
+
+-- name: GetUserCV :one
+SELECT cv FROM user_profile
+WHERE user_id = $1
+LIMIT 1;

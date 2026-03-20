@@ -31,6 +31,7 @@ type UserRepository interface {
 	UpdateUserProfile(ctx context.Context, userId int32, fullName, currentJob, experienceLevel *string, goals []string) (*domain.UserProfile, error)
 	GetUserProfileByID(ctx context.Context, userId int32) (*domain.UserProfile, error)
 	UploadCV(ctx context.Context, userId int32, data []byte) error
+	GetUserCV(ctx context.Context, userID int32) ([]byte, error)
 	GetByLinkedInID(ctx context.Context, linkedInID string) (*domain.User, error)
 	CreateLinkedInUser(ctx context.Context, email, linkedInID string, firstName, lastName *string) (*domain.User, error)
 	UpdateLinkedInID(ctx context.Context, userID int32, linkedInID string, firstName, lastName *string) error
@@ -344,6 +345,17 @@ func (r *userRepository) UploadCV(ctx context.Context, userId int32, data []byte
 		return domain.ErrInternalServer
 	}
 	return nil
+}
+
+func (r *userRepository) GetUserCV(ctx context.Context, userID int32) ([]byte, error) {
+	cv, err := r.queries.GetUserCV(ctx, userID)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, domain.ErrUserNotFound
+		}
+		return nil, domain.ErrInternalServer
+	}
+	return cv, nil
 }
 
 //func (r *userRepository) GetCV(ctx context.Context, userId int32) (byt)
