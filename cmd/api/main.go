@@ -9,6 +9,9 @@ import (
 	"os/signal"
 	"time"
 
+	"aiki/internal/ai"
+	aiAnthropic "aiki/internal/ai/anthropic"
+	aiOpenAI "aiki/internal/ai/openai"
 	"aiki/internal/config"
 	"aiki/internal/database"
 	"aiki/internal/handler"
@@ -77,6 +80,18 @@ func main() {
 	homeService := service.NewHomeService(homeRepo, notifService)
 	serpJobService := service.NewSerpJobService(serpRepo, userRepo, jobRepo, serpClient)
 
+	// AI providers & chat service
+	aiRegistry := ai.NewRegistry()
+	if cfg.AI.OpenAI.APIKey != "" {
+		aiRegistry.Register(aiOpenAI.New(cfg.AI.OpenAI.APIKey, cfg.AI.OpenAI.DefaultModel))
+		log.Println("✓ AI provider registered: openai")
+	}
+	if cfg.AI.Anthropic.APIKey != "" {
+		aiRegistry.Register(aiAnthropic.New(cfg.AI.Anthropic.APIKey, cfg.AI.Anthropic.DefaultModel))
+		log.Println("✓ AI provider registered: anthropic")
+	}
+	chatService := service.NewChatService(aiRegistry)
+
 	// Echo
 	e := echo.New()
 	e.HideBanner = true
@@ -93,9 +108,10 @@ func main() {
 	homeHandler := handler.NewHomeHandler(homeService, e.Validator)
 	notifHandler := handler.NewNotificationHandler(notifService)
 	serpHandler := handler.NewSerpJobHandler(serpJobService)
+	chatHandler := handler.NewChatHandler(chatService)
 
 	// Routes
-	router.Setup(e, authHandler, userHandler, jobHandler, homeHandler, notifHandler, serpHandler, jwtManager)
+	router.Setup(e, authHandler, userHandler, jobHandler, homeHandler, notifHandler, serpHandler, chatHandler, jwtManager)
 
 	// Scheduler
 	sched := scheduler.NewScheduler(notifService)

@@ -15,6 +15,22 @@ type Config struct {
 	JWT      JWTConfig
 	LinkedIn LinkedInConfig
 	SerpAPI  SerpConfig
+	AI       AIConfig
+}
+
+type AIConfig struct {
+	OpenAI    OpenAIConfig
+	Anthropic AnthropicConfig
+}
+
+type OpenAIConfig struct {
+	APIKey       string
+	DefaultModel string
+}
+
+type AnthropicConfig struct {
+	APIKey       string
+	DefaultModel string
 }
 
 type SerpConfig struct {
@@ -93,6 +109,16 @@ func Load() (*Config, error) {
 		},
 		SerpAPI: SerpConfig{
 			Key: getEnv("SERP_API_KEY", ""),
+		},
+		AI: AIConfig{
+			OpenAI: OpenAIConfig{
+				APIKey:       getEnv("OPENAI_API_KEY", ""),
+				DefaultModel: getEnv("OPENAI_DEFAULT_MODEL", "gpt-4o-mini"),
+			},
+			Anthropic: AnthropicConfig{
+				APIKey:       getEnv("ANTHROPIC_API_KEY", ""),
+				DefaultModel: getEnv("ANTHROPIC_DEFAULT_MODEL", "claude-haiku-4-5-20251001"),
+			},
 		},
 	}
 
