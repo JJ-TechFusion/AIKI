@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"strings"
 	"time"
 )
 
@@ -35,6 +36,10 @@ type serpAPIResponse struct {
 		Location           string `json:"location"`
 		Description        string `json:"description"`
 		ShareLink          string `json:"share_link"`
+		ApplyOptions       []struct {
+			Title string `json:"title"`
+			Link  string `json:"link"`
+		} `json:"apply_options"`
 		DetectedExtensions struct {
 			PostedAt string `json:"posted_at"`
 			Salary   string `json:"salary"`
@@ -82,7 +87,7 @@ func (c *Client) FetchJobs(jobTitle, experienceLevel, location string) ([]domain
 			CompanyName: j.CompanyName,
 			Location:    j.Location,
 			Description: j.Description,
-			Link:        j.ShareLink,
+			Link:        pickApplyLink(j.ShareLink, j.ApplyOptions),
 			Platform:    j.ViaText,
 			PostedAt:    j.DetectedExtensions.PostedAt,
 			Salary:      j.DetectedExtensions.Salary,
@@ -115,4 +120,39 @@ func buildQuery(jobTitle, experienceLevel string) string {
 	}
 
 	return fmt.Sprintf("%s %s jobs", level, jobTitle)
+}
+
+// pickApplyLink prefers employer/board URLs from apply_options; share_link is only a Google Jobs shell URL.
+func pickApplyLink(shareLink string, applyOptions []struct {
+	Title string `json:"title"`
+	Link  string `json:"link"`
+}) string {
+	for _, o := range applyOptions {
+		if o.Link == "" {
+			continue
+		}
+		if !isGoogleJobsShellURL(o.Link) {
+			return o.Link
+		}
+	}
+	for _, o := range applyOptions {
+		if o.Link != "" {
+			return o.Link
+		}
+	}
+	return shareLink
+}
+
+func isGoogleJobsShellURL(raw string) bool {
+	u, err := url.Parse(raw)
+	if err != nil {
+		return strings.Contains(strings.ToLower(raw), "google.com/search")
+	}
+	host := strings.ToLower(u.Hostname())
+	if !strings.Contains(host, "google.") {
+		return false
+	}
+	path := strings.ToLower(u.Path)
+	q := strings.ToLower(u.RawQuery)
+	return strings.Contains(path, "/search") || strings.Contains(q, "ibp=htl;jobs") || strings.Contains(q, "htivrt=jobs")
 }

@@ -20,12 +20,13 @@ type User struct {
 
 // UserProfile Details
 type UserProfile struct {
-	UserId          int32     `json:"user_id"`
-	FullName        string    `json:"full_name"`
-	CurrentJob      string    `json:"current_job"`
-	ExperienceLevel string    `json:"experience_level"`
-	Goals           []string  `json:"goals"`
-	UpdatedAt       time.Time `json:"updated_at"`
+	UserId              int32     `json:"user_id"`
+	FullName            string    `json:"full_name"`
+	CurrentJob          string    `json:"current_job"`
+	ExperienceLevel     string    `json:"experience_level"`
+	Goals               []string  `json:"goals"`
+	JobSearchLocation   string    `json:"job_search_location,omitempty"`
+	UpdatedAt           time.Time `json:"updated_at"`
 }
 
 type UserProfileRequest struct {

@@ -4,6 +4,14 @@ import (
 	"time"
 )
 
+const (
+	JobStatusSaved     = "saved"
+	JobStatusApplied   = "applied"
+	JobStatusInterview = "interview"
+	JobStatusOffer     = "offer"
+	JobStatusRejected  = "rejected"
+)
+
 type Job struct {
 	ID          int32     `json:"id"`
 	UserId      int32     `json:"user_id"`
@@ -27,6 +35,15 @@ type JobRequest struct {
 	Notes       string `json:"notes"`
 	Status      string `json:"status"`
 	DateApplied string `json:"date_applied"` // DD-MM-YYYY
+}
+
+type DirectApplyRequest struct {
+	Notes string `json:"notes"`
+}
+
+type DirectApplyResult struct {
+	Job      Job    `json:"job"`
+	ApplyURL string `json:"apply_url"`
 }
 
 func (j JobRequest) ToDomain(userId int32) Job {

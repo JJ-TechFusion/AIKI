@@ -26,6 +26,18 @@ definitions:
       name:
         type: string
     type: object
+  domain.DirectApplyRequest:
+    properties:
+      notes:
+        type: string
+    type: object
+  domain.DirectApplyResult:
+    properties:
+      apply_url:
+        type: string
+      job:
+        $ref: '#/definitions/domain.Job'
+    type: object
   domain.FocusSession:
     properties:
       created_at:
@@ -233,6 +245,8 @@ definitions:
         type: boolean
       title:
         type: string
+      tracker_job_id:
+        type: integer
       user_id:
         type: integer
     type: object
@@ -868,6 +882,53 @@ paths:
       security:
       - BearerAuth: []
       summary: Get recommended jobs
+      tags:
+      - job-search
+  /jobs/recommended/{id}/apply:
+    post:
+      consumes:
+      - application/json
+      description: Creates or updates a tracker row with status applied, links the
+        Serp cache row, and returns apply_url (Google Jobs share link) for opening
+        in an in-app browser or external browser.
+      parameters:
+      - description: Cache job ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Optional notes
+        in: body
+        name: request
+        schema:
+          $ref: '#/definitions/domain.DirectApplyRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/domain.DirectApplyResult'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.Response'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.Response'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/response.Response'
+      security:
+      - BearerAuth: []
+      summary: Record an application and get the apply URL
       tags:
       - job-search
   /jobs/recommended/{id}/save:

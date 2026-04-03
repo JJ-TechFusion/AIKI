@@ -48,6 +48,7 @@ CREATE TABLE IF NOT EXISTS user_profile (
     current_job VARCHAR(255),
     experience_level VARCHAR(100),
     goals TEXT[] DEFAULT '{}',
+    job_search_location TEXT NOT NULL DEFAULT '',
     updated_at TIMESTAMP NOT NULL DEFAULT NOW()
 );
 
@@ -61,7 +62,7 @@ CREATE TABLE IF NOT EXISTS jobs (
     link TEXT,
     location VARCHAR(255),
     platform VARCHAR(100),
-    date_applied TIMESTAMP NOT NULL DEFAULT NOW(),
+    date_applied TIMESTAMP,
     status VARCHAR(50) NOT NULL DEFAULT 'applied',
     created_at TIMESTAMP NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMP NOT NULL DEFAULT NOW()
@@ -178,16 +179,17 @@ ON CONFLICT (name) DO NOTHING;
 CREATE TABLE IF NOT EXISTS serp_job_cache (
     id               SERIAL PRIMARY KEY,
     user_id          INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    external_id      VARCHAR(255) NOT NULL,
-    title            VARCHAR(255) NOT NULL,
-    company_name     VARCHAR(255),
-    location         VARCHAR(255),
+    external_id      TEXT NOT NULL,
+    title            TEXT NOT NULL,
+    company_name     TEXT,
+    location         TEXT,
     description      TEXT,
     link             TEXT,
     platform         VARCHAR(100),
     posted_at        VARCHAR(100),
     salary           VARCHAR(100),
     saved_to_tracker BOOLEAN NOT NULL DEFAULT FALSE,
+    tracker_job_id   INT REFERENCES jobs(id) ON DELETE SET NULL,
     fetched_at       TIMESTAMP NOT NULL DEFAULT NOW(),
     UNIQUE (user_id, external_id)
 );

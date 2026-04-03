@@ -611,6 +611,81 @@ const docTemplate = `{
                 }
             }
         },
+        "/jobs/recommended/{id}/apply": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Creates or updates a tracker row with status applied, links the Serp cache row, and returns apply_url (Google Jobs share link) for opening in an in-app browser or external browser.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "job-search"
+                ],
+                "summary": "Record an application and get the apply URL",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Cache job ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Optional notes",
+                        "name": "request",
+                        "in": "body",
+                        "schema": {
+                            "$ref": "#/definitions/domain.DirectApplyRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/response.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/domain.DirectApplyResult"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    }
+                }
+            }
+        },
         "/jobs/recommended/{id}/save": {
             "post": {
                 "security": [
@@ -1979,6 +2054,25 @@ const docTemplate = `{
                 }
             }
         },
+        "domain.DirectApplyRequest": {
+            "type": "object",
+            "properties": {
+                "notes": {
+                    "type": "string"
+                }
+            }
+        },
+        "domain.DirectApplyResult": {
+            "type": "object",
+            "properties": {
+                "apply_url": {
+                    "type": "string"
+                },
+                "job": {
+                    "$ref": "#/definitions/domain.Job"
+                }
+            }
+        },
         "domain.FocusSession": {
             "type": "object",
             "properties": {
@@ -2285,6 +2379,9 @@ const docTemplate = `{
                 },
                 "title": {
                     "type": "string"
+                },
+                "tracker_job_id": {
+                    "type": "integer"
                 },
                 "user_id": {
                     "type": "integer"

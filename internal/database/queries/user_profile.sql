@@ -38,3 +38,9 @@ RETURNING *;
 SELECT cv FROM user_profile
 WHERE user_id = $1
 LIMIT 1;
+
+-- name: UpdateUserJobSearchLocation :exec
+UPDATE user_profile
+SET job_search_location = $2,
+    updated_at = NOW()
+WHERE user_id = $1;

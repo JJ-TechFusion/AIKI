@@ -30,6 +30,7 @@ type UserRepository interface {
 	CreateUserProfile(ctx context.Context, userId int32, fullName, currentJob, experienceLevel *string, goals []string) (*domain.UserProfile, error)
 	UpdateUserProfile(ctx context.Context, userId int32, fullName, currentJob, experienceLevel *string, goals []string) (*domain.UserProfile, error)
 	GetUserProfileByID(ctx context.Context, userId int32) (*domain.UserProfile, error)
+	UpdateUserJobSearchLocation(ctx context.Context, userID int32, jobSearchLocation string) error
 	UploadCV(ctx context.Context, userId int32, data []byte) error
 	GetUserCV(ctx context.Context, userID int32) ([]byte, error)
 	GetByLinkedInID(ctx context.Context, linkedInID string) (*domain.User, error)
@@ -267,12 +268,13 @@ func (r *userRepository) CreateUserProfile(ctx context.Context, userId int32, fu
 
 	fmt.Println("User profile created successfully")
 	return &domain.UserProfile{
-		UserId:          profile.UserID,
-		FullName:        fullname,
-		CurrentJob:      currentjob,
-		ExperienceLevel: experience,
-		Goals:           profile.Goals,
-		UpdatedAt:       profile.UpdatedAt.Time,
+		UserId:            profile.UserID,
+		FullName:          fullname,
+		CurrentJob:        currentjob,
+		ExperienceLevel:   experience,
+		Goals:             profile.Goals,
+		JobSearchLocation: profile.JobSearchLocation,
+		UpdatedAt:         profile.UpdatedAt.Time,
 	}, nil
 }
 
@@ -297,13 +299,21 @@ func (r *userRepository) GetUserProfileByID(ctx context.Context, userId int32) (
 	}
 
 	return &domain.UserProfile{
-		UserId:          profile.UserID,
-		FullName:        fullname,
-		CurrentJob:      currentjob,
-		ExperienceLevel: experience,
-		Goals:           profile.Goals,
-		UpdatedAt:       profile.UpdatedAt.Time,
+		UserId:            profile.UserID,
+		FullName:          fullname,
+		CurrentJob:        currentjob,
+		ExperienceLevel:   experience,
+		Goals:             profile.Goals,
+		JobSearchLocation: profile.JobSearchLocation,
+		UpdatedAt:         profile.UpdatedAt.Time,
 	}, nil
+}
+
+func (r *userRepository) UpdateUserJobSearchLocation(ctx context.Context, userID int32, jobSearchLocation string) error {
+	return r.queries.UpdateUserJobSearchLocation(ctx, db.UpdateUserJobSearchLocationParams{
+		UserID:            userID,
+		JobSearchLocation: jobSearchLocation,
+	})
 }
 
 func (r *userRepository) UpdateUserProfile(ctx context.Context, userId int32, fullName, currentJob, experienceLevel *string, goals []string) (*domain.UserProfile, error) {
@@ -319,12 +329,13 @@ func (r *userRepository) UpdateUserProfile(ctx context.Context, userId int32, fu
 	}
 
 	return &domain.UserProfile{
-		UserId:          profile.UserID,
-		FullName:        *profile.FullName,
-		CurrentJob:      *profile.CurrentJob,
-		ExperienceLevel: *profile.ExperienceLevel,
-		Goals:           profile.Goals,
-		UpdatedAt:       profile.UpdatedAt.Time,
+		UserId:            profile.UserID,
+		FullName:          *profile.FullName,
+		CurrentJob:        *profile.CurrentJob,
+		ExperienceLevel:   *profile.ExperienceLevel,
+		Goals:             profile.Goals,
+		JobSearchLocation: profile.JobSearchLocation,
+		UpdatedAt:         profile.UpdatedAt.Time,
 	}, nil
 }
 

@@ -25,6 +25,9 @@ var (
 	ErrFailedToCreateJob        = errors.New("failed to create job")
 	ErrFailedToUpdateJob        = errors.New("failed to update job")
 	ErrInvalidJobID             = errors.New("invalid job id")
+	ErrJobAlreadyTracked        = errors.New("job already saved to tracker")
+	ErrJobAlreadyApplied        = errors.New("job already applied")
+	ErrNoApplyLink              = errors.New("this listing has no apply link")
 	ErrCVNotFound               = errors.New("cv not found")
 )
 
@@ -67,8 +70,12 @@ func GetHTTPStatus(err error) int {
 		return http.StatusUnauthorized
 	case errors.Is(err, ErrInvalidToken), errors.Is(err, ErrTokenExpired):
 		return http.StatusUnauthorized
-	case errors.Is(err, ErrInvalidInput), errors.Is(err, ErrWeakPassword):
+	case errors.Is(err, ErrInvalidInput), errors.Is(err, ErrWeakPassword), errors.Is(err, ErrNoApplyLink):
 		return http.StatusBadRequest
+	case errors.Is(err, ErrInvalidJobID):
+		return http.StatusNotFound
+	case errors.Is(err, ErrJobAlreadyTracked), errors.Is(err, ErrJobAlreadyApplied):
+		return http.StatusConflict
 	default:
 		return http.StatusInternalServerError
 	}

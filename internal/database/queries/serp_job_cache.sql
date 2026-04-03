@@ -35,6 +35,11 @@ SELECT * FROM serp_job_cache
 WHERE id = $1 AND user_id = $2
 LIMIT 1;
 
+-- name: GetCachedJobByTrackerID :one
+SELECT * FROM serp_job_cache
+WHERE tracker_job_id = $1 AND user_id = $2
+LIMIT 1;
+
 -- name: GetLatestCacheFetchTime :one
 SELECT fetched_at FROM serp_job_cache
 WHERE user_id = $1
@@ -43,7 +48,8 @@ LIMIT 1;
 
 -- name: MarkJobSavedToTracker :exec
 UPDATE serp_job_cache
-SET saved_to_tracker = TRUE
+SET saved_to_tracker = TRUE,
+    tracker_job_id = $3
 WHERE id = $1 AND user_id = $2;
 
 -- name: DeleteOldCacheForUser :exec

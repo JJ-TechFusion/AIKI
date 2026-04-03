@@ -55,15 +55,16 @@ func Setup(
 	jobs := api.Group("/jobs")
 	jobs.Use(middleware.Auth(jwtManager))
 	{
+		// Serp routes (static paths before /:id so "recommended" is not parsed as an id)
+		jobs.GET("/recommended", serpHandler.GetRecommendedJobs)
+		jobs.POST("/recommended/:id/save", serpHandler.SaveJobToTracker)
+		jobs.POST("/recommended/:id/apply", serpHandler.ApplyRecommendedJob)
+
 		jobs.POST("", jobHandler.CreateJob)
 		jobs.GET("", jobHandler.GetAllJobs)
 		jobs.GET("/:id", jobHandler.GetJob)
 		jobs.PUT("/:id", jobHandler.UpdateJob)
 		jobs.DELETE("/:id", jobHandler.DeleteJob)
-
-		// Job recommendations via SerpApi
-		jobs.GET("/recommended", serpHandler.GetRecommendedJobs)
-		jobs.POST("/recommended/:id/save", serpHandler.SaveJobToTracker)
 	}
 
 	// Home screen

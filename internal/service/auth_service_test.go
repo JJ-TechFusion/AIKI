@@ -40,6 +40,10 @@ func (m *MockUserRepository) GetUserProfileByID(ctx context.Context, userId int3
 	panic("implement me")
 }
 
+func (m *MockUserRepository) UpdateUserJobSearchLocation(ctx context.Context, userID int32, jobSearchLocation string) error {
+	return nil
+}
+
 func (m *MockUserRepository) Create(ctx context.Context, user *domain.User, passwordHash string) (*domain.User, error) {
 	args := m.Called(ctx, user, passwordHash)
 	if args.Get(0) == nil {

@@ -30,6 +30,7 @@ type SerpJobCache struct {
 	PostedAt       string    `json:"posted_at"`
 	Salary         string    `json:"salary"`
 	SavedToTracker bool      `json:"saved_to_tracker"`
+	TrackerJobID   *int32    `json:"tracker_job_id,omitempty"`
 	FetchedAt      time.Time `json:"fetched_at"`
 }
 
