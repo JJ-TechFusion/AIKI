@@ -22,6 +22,8 @@ type UserRepository interface {
 	GetByEmail(ctx context.Context, email string) (*domain.User, error)
 	Update(ctx context.Context, id int32, firstName, lastName *string, phoneNumber *string) (*domain.User, error)
 	EmailExists(ctx context.Context, email string) (bool, error)
+	IsEmailVerified(ctx context.Context, userID int32) (bool, error)
+	MarkEmailVerified(ctx context.Context, userID int32) error
 	CreateRefreshToken(ctx context.Context, userID int32, token string, expiresAt time.Time) error
 	GetRefreshToken(ctx context.Context, token string) (int32, error)
 	DeleteRefreshToken(ctx context.Context, token string) error
@@ -181,6 +183,43 @@ func (r *userRepository) EmailExists(ctx context.Context, email string) (bool, e
 	}
 
 	return exists, nil
+}
+
+func (r *userRepository) IsEmailVerified(ctx context.Context, userID int32) (bool, error) {
+	query := `
+		SELECT email_verified_at IS NOT NULL
+		FROM users
+		WHERE id = $1 AND is_active = TRUE
+	`
+
+	var isVerified bool
+	err := r.db.QueryRow(ctx, query, userID).Scan(&isVerified)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return false, domain.ErrUserNotFound
+		}
+		return false, err
+	}
+
+	return isVerified, nil
+}
+
+func (r *userRepository) MarkEmailVerified(ctx context.Context, userID int32) error {
+	query := `
+		UPDATE users
+		SET email_verified_at = NOW(), updated_at = NOW()
+		WHERE id = $1 AND is_active = TRUE
+	`
+
+	commandTag, err := r.db.Exec(ctx, query, userID)
+	if err != nil {
+		return err
+	}
+	if commandTag.RowsAffected() == 0 {
+		return domain.ErrUserNotFound
+	}
+
+	return nil
 }
 
 func (r *userRepository) CreateRefreshToken(ctx context.Context, userID int32, token string, expiresAt time.Time) error {

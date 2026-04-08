@@ -36,6 +36,7 @@ type HomeRepository interface {
 	// Progress
 	UpsertDailyProgress(ctx context.Context, userID int32, date time.Time, focusSeconds, sessions int32) error
 	GetProgressSummary(ctx context.Context, userID int32, from, to time.Time) (*domain.ProgressSummary, error)
+	GetDailyProgressRange(ctx context.Context, userID int32, from, to time.Time) ([]domain.DailyProgress, error)
 }
 
 type homeRepository struct {
@@ -243,6 +244,46 @@ func (r *homeRepository) GetProgressSummary(ctx context.Context, userID int32, f
 		SessionsCompleted: row.SessionsCompleted,
 		DaysActive:        row.DaysActive,
 	}, nil
+}
+
+func (r *homeRepository) GetDailyProgressRange(ctx context.Context, userID int32, from, to time.Time) ([]domain.DailyProgress, error) {
+	const query = `
+		SELECT date, total_focus_seconds, sessions_completed
+		FROM daily_progress
+		WHERE user_id = $1
+		  AND date BETWEEN $2 AND $3
+		ORDER BY date ASC
+	`
+
+	rows, err := r.db.Query(ctx, query, userID, from, to)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var dailyProgress []domain.DailyProgress
+	for rows.Next() {
+		var date pgtype.Date
+		var focusSeconds int32
+		var sessionsCompleted int32
+
+		if err := rows.Scan(&date, &focusSeconds, &sessionsCompleted); err != nil {
+			return nil, err
+		}
+
+		dailyProgress = append(dailyProgress, domain.DailyProgress{
+			UserID:            userID,
+			Date:              date.Time,
+			TotalFocusSeconds: focusSeconds,
+			SessionsCompleted: sessionsCompleted,
+		})
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return dailyProgress, nil
 }
 
 // ─────────────────────────────────────────
