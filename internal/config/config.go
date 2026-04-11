@@ -15,6 +15,7 @@ type Config struct {
 	JWT      JWTConfig
 	LinkedIn LinkedInConfig
 	SerpAPI  SerpConfig
+	Email    EmailConfig
 }
 
 type SerpConfig struct {
@@ -56,6 +57,12 @@ type LinkedInConfig struct {
 	ClientCallbackUrl string
 }
 
+type EmailConfig struct {
+	ResendAPIKey string
+	FromEmail    string
+	FromName     string
+}
+
 func Load() (*Config, error) {
 	// Load .env file if it exists (ignore error in production)
 	_ = godotenv.Load()
@@ -93,6 +100,11 @@ func Load() (*Config, error) {
 		},
 		SerpAPI: SerpConfig{
 			Key: getEnv("SERP_API_KEY", ""),
+		},
+		Email: EmailConfig{
+			ResendAPIKey: getEnv("RESEND_API_KEY", ""),
+			FromEmail:    getEnv("EMAIL_FROM_ADDRESS", "no-reply@aiki.app"),
+			FromName:     getEnv("EMAIL_FROM_NAME", "Aiki"),
 		},
 	}
 

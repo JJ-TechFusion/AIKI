@@ -1,4 +1,35 @@
 services:
+  api:
+    build:
+      context: .
+      dockerfile: dockerfile
+    container_name: aiki-api
+    environment:
+      PORT: 8080
+      ENV: development
+      DB_URL: postgresql://aiki:aiki_password@postgres:5432/aiki_db?sslmode=disable
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_USER: aiki
+      DB_PASSWORD: aiki_password
+      DB_NAME: aiki_db
+      DB_SSL_MODE: disable
+      REDIS_ADDR: redis:6379
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: ""
+      REDIS_DB: 0
+      JWT_SECRET: your-super-secret-jwt-key-change-this-in-production
+      JWT_ACCESS_EXPIRY: 15m
+      JWT_REFRESH_EXPIRY: 7d
+    ports:
+      - "8080:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
   postgres:
     image: postgres:16-alpine
     container_name: aiki-postgres

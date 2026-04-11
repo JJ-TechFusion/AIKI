@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"aiki/internal/domain"
@@ -230,6 +231,10 @@ func (s *authService) LinkedInLogin(ctx context.Context, linkedInID, email, firs
 		}
 	}
 
+	if err := s.ensureUserProfileForLinkedIn(ctx, user.ID, firstName, lastName); err != nil {
+		return nil, err
+	}
+
 	// Generate tokens
 	accessToken, err := s.jwtManager.GenerateAccessToken(user.ID, user.Email)
 	if err != nil {
@@ -253,4 +258,31 @@ func (s *authService) LinkedInLogin(ctx context.Context, linkedInID, email, firs
 		RefreshToken: refreshToken,
 		User:         user,
 	}, nil
+}
+
+func (s *authService) ensureUserProfileForLinkedIn(
+	ctx context.Context,
+	userID int32,
+	firstName, lastName string,
+) error {
+	_, err := s.userRepo.GetUserProfileByID(ctx, userID)
+	if err == nil {
+		return nil
+	}
+	if !errors.Is(err, domain.ErrUserNotFound) {
+		return err
+	}
+
+	fullName := strings.TrimSpace(strings.Join([]string{firstName, lastName}, " "))
+	var fullNamePtr *string
+	if fullName != "" {
+		fullNamePtr = &fullName
+	}
+
+	_, err = s.userRepo.CreateUserProfile(ctx, userID, fullNamePtr, nil, nil, nil)
+	if errors.Is(err, domain.ErrUserProfileAlreadyExists) {
+		return nil
+	}
+
+	return err
 }

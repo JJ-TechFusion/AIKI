@@ -26,10 +26,11 @@ import (
 )
 
 type AuthHandler struct {
-	authService service.AuthService
-	validator   echo.Validator
-	config      config.Config
-	redis       *redis.Client
+	authService              service.AuthService
+	emailVerificationService service.EmailVerificationService
+	validator                echo.Validator
+	config                   config.Config
+	redis                    *redis.Client
 }
 
 const (
@@ -38,12 +39,19 @@ const (
 )
 
 // NewAuthHandler Update the constructor to accept config
-func NewAuthHandler(authService service.AuthService, validator echo.Validator, redis *redis.Client, cfg config.Config) *AuthHandler {
+func NewAuthHandler(
+	authService service.AuthService,
+	emailVerificationService service.EmailVerificationService,
+	validator echo.Validator,
+	redis *redis.Client,
+	cfg config.Config,
+) *AuthHandler {
 	return &AuthHandler{
-		authService: authService,
-		validator:   validator,
-		redis:       redis,
-		config:      cfg,
+		authService:              authService,
+		emailVerificationService: emailVerificationService,
+		validator:                validator,
+		redis:                    redis,
+		config:                   cfg,
 	}
 }
 
@@ -71,6 +79,10 @@ func (h *AuthHandler) Register(c echo.Context) error {
 	resp, err := h.authService.Register(c.Request().Context(), &req)
 	if err != nil {
 		return response.Error(c, err)
+	}
+
+	if _, err := h.emailVerificationService.SendVerification(c.Request().Context(), resp.User.ID); err != nil {
+		c.Logger().Warnf("failed to send verification email after register for user %d: %v", resp.User.ID, err)
 	}
 
 	return response.Success(c, http.StatusCreated, "user registered successfully", resp)
@@ -465,6 +477,66 @@ func (h *AuthHandler) ResetPassword(c echo.Context) error {
 		c.Logger().Errorf("failed to delete session id for tracking user session: %v", err)
 	}
 	return response.Success(c, http.StatusOK, "password has been reset successfully", nil)
+}
+
+// VerifyEmail godoc
+// @Summary Verify email
+// @Description Verify the authenticated user's email with a one-time code
+// @Tags auth
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param request body domain.VerifyEmailRequest true "Verification code"
+// @Success 200 {object} response.Response
+// @Failure 400 {object} response.Response
+// @Failure 401 {object} response.Response
+// @Failure 410 {object} response.Response
+// @Router /auth/verify-email [post]
+func (h *AuthHandler) VerifyEmail(c echo.Context) error {
+	userID, ok := c.Get("user_id").(int32)
+	if !ok {
+		return response.Error(c, domain.ErrUnauthorized)
+	}
+
+	var req domain.VerifyEmailRequest
+	if err := c.Bind(&req); err != nil {
+		return response.ValidationError(c, "invalid request body")
+	}
+	if err := h.validator.Validate(&req); err != nil {
+		return response.ValidationError(c, err.Error())
+	}
+
+	if err := h.emailVerificationService.VerifyEmail(c.Request().Context(), userID, req.Otp); err != nil {
+		return response.Error(c, err)
+	}
+
+	return response.Success(c, http.StatusOK, "email verified successfully", nil)
+}
+
+// ResendEmailVerification godoc
+// @Summary Resend verification email
+// @Description Send a new verification code to the authenticated user's email
+// @Tags auth
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Success 200 {object} response.Response{data=domain.EmailVerificationResponse}
+// @Failure 401 {object} response.Response
+// @Failure 409 {object} response.Response
+// @Failure 429 {object} response.Response
+// @Router /auth/verify-email/resend [post]
+func (h *AuthHandler) ResendEmailVerification(c echo.Context) error {
+	userID, ok := c.Get("user_id").(int32)
+	if !ok {
+		return response.Error(c, domain.ErrUnauthorized)
+	}
+
+	data, err := h.emailVerificationService.SendVerification(c.Request().Context(), userID)
+	if err != nil {
+		return response.Error(c, err)
+	}
+
+	return response.Success(c, http.StatusOK, "verification email sent successfully", data)
 }
 
 func sessionKey(key string) string {

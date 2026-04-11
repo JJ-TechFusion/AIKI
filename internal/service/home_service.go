@@ -5,6 +5,7 @@ import (
 	"aiki/internal/pkg/response"
 	"aiki/internal/repository"
 	"context"
+	"fmt"
 	"time"
 )
 
@@ -306,7 +307,13 @@ func (s *homeService) GetProgressSummary(ctx context.Context, userID int32, peri
 	if err != nil {
 		return nil, err
 	}
+
+	dailyProgress, err := s.homeRepo.GetDailyProgressRange(ctx, userID, from, now)
+	if err != nil {
+		return nil, err
+	}
 	summary.Period = period
+	summary.ChartPoints = buildProgressChartPoints(period, from, dailyProgress)
 	return summary, nil
 }
 
@@ -319,4 +326,111 @@ func max32(a, b int32) int32 {
 		return a
 	}
 	return b
+}
+
+func buildProgressChartPoints(period string, from time.Time, dailyProgress []domain.DailyProgress) []domain.ProgressChartPoint {
+	switch period {
+	case "monthly":
+		return buildMonthlyChartPoints(from, dailyProgress)
+	case "yearly":
+		return buildYearlyChartPoints(from, dailyProgress)
+	default:
+		return buildWeeklyChartPoints(from, dailyProgress)
+	}
+}
+
+func buildWeeklyChartPoints(from time.Time, dailyProgress []domain.DailyProgress) []domain.ProgressChartPoint {
+	pointsByDate := make(map[string]domain.DailyProgress, len(dailyProgress))
+	for _, point := range dailyProgress {
+		key := normalizeDate(point.Date).Format("2006-01-02")
+		pointsByDate[key] = point
+	}
+
+	labels := []string{"Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"}
+	chartPoints := make([]domain.ProgressChartPoint, 0, 7)
+
+	for index := 0; index < 7; index++ {
+		day := normalizeDate(from.AddDate(0, 0, index))
+		bucketKey := day.Format("2006-01-02")
+		chartPoints = append(chartPoints, newChartPoint(labels[index], bucketKey, pointsByDate[bucketKey]))
+	}
+
+	return chartPoints
+}
+
+func buildMonthlyChartPoints(from time.Time, dailyProgress []domain.DailyProgress) []domain.ProgressChartPoint {
+	year, month, _ := from.Date()
+	location := from.Location()
+	daysInMonth := time.Date(year, month+1, 0, 0, 0, 0, 0, location).Day()
+	weeksInMonth := (daysInMonth + 6) / 7
+
+	focusByWeek := make(map[int]int64, weeksInMonth)
+	sessionsByWeek := make(map[int]int64, weeksInMonth)
+
+	for _, point := range dailyProgress {
+		weekIndex := ((normalizeDate(point.Date).Day() - 1) / 7) + 1
+		focusByWeek[weekIndex] += int64(point.TotalFocusSeconds)
+		sessionsByWeek[weekIndex] += int64(point.SessionsCompleted)
+	}
+
+	chartPoints := make([]domain.ProgressChartPoint, 0, weeksInMonth)
+	for weekIndex := 1; weekIndex <= weeksInMonth; weekIndex++ {
+		totalFocusSeconds := focusByWeek[weekIndex]
+		sessionsCompleted := sessionsByWeek[weekIndex]
+
+		chartPoints = append(chartPoints, domain.ProgressChartPoint{
+			Label:             fmt.Sprintf("Week %d", weekIndex),
+			BucketKey:         fmt.Sprintf("%04d-%02d-W%d", year, month, weekIndex),
+			TotalFocusSeconds: totalFocusSeconds,
+			TotalFocusHours:   float64(totalFocusSeconds) / 3600.0,
+			SessionsCompleted: sessionsCompleted,
+		})
+	}
+
+	return chartPoints
+}
+
+func buildYearlyChartPoints(from time.Time, dailyProgress []domain.DailyProgress) []domain.ProgressChartPoint {
+	year := from.Year()
+	focusByMonth := make(map[time.Month]int64, 12)
+	sessionsByMonth := make(map[time.Month]int64, 12)
+
+	for _, point := range dailyProgress {
+		month := normalizeDate(point.Date).Month()
+		focusByMonth[month] += int64(point.TotalFocusSeconds)
+		sessionsByMonth[month] += int64(point.SessionsCompleted)
+	}
+
+	chartPoints := make([]domain.ProgressChartPoint, 0, 12)
+	for month := time.January; month <= time.December; month++ {
+		totalFocusSeconds := focusByMonth[month]
+		sessionsCompleted := sessionsByMonth[month]
+
+		chartPoints = append(chartPoints, domain.ProgressChartPoint{
+			Label:             month.String()[:3],
+			BucketKey:         fmt.Sprintf("%04d-%02d", year, int(month)),
+			TotalFocusSeconds: totalFocusSeconds,
+			TotalFocusHours:   float64(totalFocusSeconds) / 3600.0,
+			SessionsCompleted: sessionsCompleted,
+		})
+	}
+
+	return chartPoints
+}
+
+func newChartPoint(label, bucketKey string, progress domain.DailyProgress) domain.ProgressChartPoint {
+	totalFocusSeconds := int64(progress.TotalFocusSeconds)
+	sessionsCompleted := int64(progress.SessionsCompleted)
+
+	return domain.ProgressChartPoint{
+		Label:             label,
+		BucketKey:         bucketKey,
+		TotalFocusSeconds: totalFocusSeconds,
+		TotalFocusHours:   float64(totalFocusSeconds) / 3600.0,
+		SessionsCompleted: sessionsCompleted,
+	}
+}
+
+func normalizeDate(date time.Time) time.Time {
+	return time.Date(date.Year(), date.Month(), date.Day(), 0, 0, 0, 0, date.Location())
 }
