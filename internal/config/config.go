@@ -16,6 +16,7 @@ type Config struct {
 	LinkedIn LinkedInConfig
 	SerpAPI  SerpConfig
 	AI       AIConfig
+	Email    EmailConfig
 }
 
 type AIConfig struct {
@@ -126,14 +127,19 @@ func Load() (*Config, error) {
 				APIKey:       getEnv("ANTHROPIC_API_KEY", ""),
 				DefaultModel: getEnv("ANTHROPIC_DEFAULT_MODEL", "claude-haiku-4-5-20251001"),
 			},
+		},		
 		Email: EmailConfig{
 			ResendAPIKey: getEnv("RESEND_API_KEY", ""),
 			FromEmail:    getEnv("EMAIL_FROM_ADDRESS", "no-reply@aiki.app"),
 			FromName:     getEnv("EMAIL_FROM_NAME", "Aiki"),
 		},
+		
+
 	}
+	
 
 	return cfg, nil
+	
 }
 
 func (c *DatabaseConfig) ConnectionString() string {
