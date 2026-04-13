@@ -86,6 +86,12 @@ func main() {
 		emailSender,
 		cfg.Server.Env,
 	)
+	passwordResetService := service.NewPasswordResetService(
+		userRepo,
+		redis,
+		emailSender,
+		cfg.Server.Env,
+	)
 	userService := service.NewUserService(userRepo)
 	jobService := service.NewJobService(jobRepo)
 	notifService := service.NewNotificationService(notifRepo)
@@ -117,6 +123,7 @@ func main() {
 	authHandler := handler.NewAuthHandler(
 		authService,
 		emailVerificationService,
+		passwordResetService,
 		e.Validator,
 		redis,
 		*cfg,

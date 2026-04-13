@@ -25,6 +25,7 @@ type MockAuthService struct {
 }
 
 type noopEmailVerificationService struct{}
+type noopPasswordResetService struct{}
 
 func (noopEmailVerificationService) SendVerification(ctx context.Context, userID int32) (*domain.EmailVerificationResponse, error) {
 	return &domain.EmailVerificationResponse{
@@ -34,6 +35,22 @@ func (noopEmailVerificationService) SendVerification(ctx context.Context, userID
 }
 
 func (noopEmailVerificationService) VerifyEmail(ctx context.Context, userID int32, otp string) error {
+	return nil
+}
+
+func (noopPasswordResetService) SendResetCode(ctx context.Context, email string) (*domain.ForgotPasswordResponse, error) {
+	return &domain.ForgotPasswordResponse{SessionID: "session-id"}, nil
+}
+
+func (noopPasswordResetService) VerifyResetCode(ctx context.Context, sessionID, otp string) error {
+	return nil
+}
+
+func (noopPasswordResetService) GetVerifiedEmail(ctx context.Context, sessionID string) (string, error) {
+	return "john@example.com", nil
+}
+
+func (noopPasswordResetService) ClearSession(ctx context.Context, sessionID string) error {
 	return nil
 }
 
@@ -106,6 +123,7 @@ func TestAuthHandler_Register(t *testing.T) {
 	handler := NewAuthHandler(
 		mockService,
 		noopEmailVerificationService{},
+		noopPasswordResetService{},
 		e.Validator,
 		redisCache,
 		config.Config{},
@@ -184,6 +202,7 @@ func TestAuthHandler_Login(t *testing.T) {
 	handler := NewAuthHandler(
 		mockService,
 		noopEmailVerificationService{},
+		noopPasswordResetService{},
 		e.Validator,
 		redisCache,
 		config.Config{},
@@ -255,6 +274,7 @@ func TestAuthHandler_RefreshToken(t *testing.T) {
 	handler := NewAuthHandler(
 		mockService,
 		noopEmailVerificationService{},
+		noopPasswordResetService{},
 		e.Validator,
 		redisCache,
 		config.Config{},
@@ -299,6 +319,7 @@ func TestAuthHandler_Logout(t *testing.T) {
 	handler := NewAuthHandler(
 		mockService,
 		noopEmailVerificationService{},
+		noopPasswordResetService{},
 		e.Validator,
 		redisCache,
 		config.Config{},
