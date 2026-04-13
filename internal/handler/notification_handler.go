@@ -153,3 +153,57 @@ func (h *NotificationHandler) DeleteNotification(c echo.Context) error {
 
 	return response.Success(c, http.StatusOK, "notification deleted", nil)
 }
+
+// GetPreferences godoc
+// @Summary      Get notification preferences
+// @Description  Returns notification channel and category preferences for the authenticated user
+// @Tags         notifications
+// @Produce      json
+// @Security     BearerAuth
+// @Success      200 {object} response.Response{data=domain.NotificationPreferences}
+// @Failure      401 {object} response.Response
+// @Router       /notifications/preferences [get]
+func (h *NotificationHandler) GetPreferences(c echo.Context) error {
+	userID, ok := c.Get("user_id").(int32)
+	if !ok {
+		return response.Error(c, domain.ErrUnauthorized)
+	}
+
+	prefs, err := h.notifService.GetPreferences(c.Request().Context(), userID)
+	if err != nil {
+		return response.Error(c, err)
+	}
+
+	return response.Success(c, http.StatusOK, "notification preferences retrieved", prefs)
+}
+
+// UpdatePreferences godoc
+// @Summary      Update notification preferences
+// @Description  Replaces notification channel and category preferences for the authenticated user
+// @Tags         notifications
+// @Accept       json
+// @Produce      json
+// @Security     BearerAuth
+// @Param        request body domain.UpdateNotificationPreferencesRequest true "Notification preferences"
+// @Success      200 {object} response.Response{data=domain.NotificationPreferences}
+// @Failure      400 {object} response.Response
+// @Failure      401 {object} response.Response
+// @Router       /notifications/preferences [put]
+func (h *NotificationHandler) UpdatePreferences(c echo.Context) error {
+	userID, ok := c.Get("user_id").(int32)
+	if !ok {
+		return response.Error(c, domain.ErrUnauthorized)
+	}
+
+	var req domain.UpdateNotificationPreferencesRequest
+	if err := c.Bind(&req); err != nil {
+		return response.ValidationError(c, "invalid request body")
+	}
+
+	prefs, err := h.notifService.UpdatePreferences(c.Request().Context(), userID, &req)
+	if err != nil {
+		return response.Error(c, err)
+	}
+
+	return response.Success(c, http.StatusOK, "notification preferences updated", prefs)
+}
