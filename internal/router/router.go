@@ -118,7 +118,9 @@ func Setup(
 	notifs.Use(middleware.Auth(jwtManager))
 	{
 		notifs.GET("", notifHandler.GetNotifications)
+		notifs.GET("/preferences", notifHandler.GetPreferences)
 		notifs.GET("/unread-count", notifHandler.GetUnreadCount)
+		notifs.PUT("/preferences", notifHandler.UpdatePreferences)
 		notifs.PATCH("/read-all", notifHandler.MarkAllRead)
 		notifs.PATCH("/:id/read", notifHandler.MarkRead)
 		notifs.DELETE("/:id", notifHandler.DeleteNotification)

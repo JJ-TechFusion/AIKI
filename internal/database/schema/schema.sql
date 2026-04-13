@@ -158,6 +158,26 @@ CREATE INDEX IF NOT EXISTS idx_notifications_user_id    ON notifications(user_id
 CREATE INDEX IF NOT EXISTS idx_notifications_is_read    ON notifications(user_id, is_read);
 CREATE INDEX IF NOT EXISTS idx_notifications_created_at ON notifications(created_at);
 
+CREATE TABLE IF NOT EXISTS notification_preferences (
+    user_id               INT PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+    in_app_enabled        BOOLEAN NOT NULL DEFAULT TRUE,
+    push_enabled          BOOLEAN NOT NULL DEFAULT FALSE,
+    email_enabled         BOOLEAN NOT NULL DEFAULT FALSE,
+    session_completed     BOOLEAN NOT NULL DEFAULT TRUE,
+    daily_reminder        BOOLEAN NOT NULL DEFAULT TRUE,
+    motivational_nudges   BOOLEAN NOT NULL DEFAULT TRUE,
+    streak_milestone      BOOLEAN NOT NULL DEFAULT TRUE,
+    streak_warning        BOOLEAN NOT NULL DEFAULT TRUE,
+    badge_earned          BOOLEAN NOT NULL DEFAULT TRUE,
+    follow_up_reminder    BOOLEAN NOT NULL DEFAULT TRUE,
+    application_check_in  BOOLEAN NOT NULL DEFAULT TRUE,
+    interview_reminder    BOOLEAN NOT NULL DEFAULT TRUE,
+    updated_at            TIMESTAMP NOT NULL DEFAULT NOW()
+);
+
+CREATE TRIGGER update_notification_preferences_updated_at BEFORE UPDATE ON notification_preferences
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
 -- ============================================================
 -- Seed badge definitions
 -- ============================================================

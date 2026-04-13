@@ -18,6 +18,8 @@ type NotificationService interface {
 	MarkRead(ctx context.Context, notificationID, userID int32) error
 	MarkAllRead(ctx context.Context, userID int32) error
 	Delete(ctx context.Context, notificationID, userID int32) error
+	GetPreferences(ctx context.Context, userID int32) (*domain.NotificationPreferences, error)
+	UpdatePreferences(ctx context.Context, userID int32, req *domain.UpdateNotificationPreferencesRequest) (*domain.NotificationPreferences, error)
 
 	// Internal triggers (called by other services)
 	NotifySessionCompleted(ctx context.Context, userID int32, focusSeconds int32)
@@ -82,6 +84,30 @@ func (s *notificationService) Delete(ctx context.Context, notificationID, userID
 	return s.notifRepo.Delete(ctx, notificationID, userID)
 }
 
+func (s *notificationService) GetPreferences(ctx context.Context, userID int32) (*domain.NotificationPreferences, error) {
+	return s.notifRepo.GetPreferences(ctx, userID)
+}
+
+func (s *notificationService) UpdatePreferences(ctx context.Context, userID int32, req *domain.UpdateNotificationPreferencesRequest) (*domain.NotificationPreferences, error) {
+	prefs := domain.NotificationPreferences{
+		UserID:             userID,
+		InAppEnabled:       req.InAppEnabled,
+		PushEnabled:        req.PushEnabled,
+		EmailEnabled:       req.EmailEnabled,
+		SessionCompleted:   req.SessionCompleted,
+		DailyReminder:      req.DailyReminder,
+		MotivationalNudges: req.MotivationalNudges,
+		StreakMilestone:    req.StreakMilestone,
+		StreakWarning:      req.StreakWarning,
+		BadgeEarned:        req.BadgeEarned,
+		FollowUpReminder:   req.FollowUpReminder,
+		ApplicationCheckIn: req.ApplicationCheckIn,
+		InterviewReminder:  req.InterviewReminder,
+	}
+
+	return s.notifRepo.UpsertPreferences(ctx, prefs)
+}
+
 // ─────────────────────────────────────────
 // Internal Triggers
 // ─────────────────────────────────────────
@@ -101,10 +127,7 @@ func (s *notificationService) NotifySessionCompleted(ctx context.Context, userID
 		message = fmt.Sprintf("Solid %d minute session. Keep building consistency!", minutes)
 	}
 
-	_, err := s.notifRepo.Create(ctx, userID, domain.NotificationTypeSessionCompleted, title, message)
-	if err != nil {
-		log.Printf("failed to create session completed notification for user %d: %v", userID, err)
-	}
+	s.createInAppNotification(ctx, userID, domain.NotificationTypeSessionCompleted, title, message)
 }
 
 func (s *notificationService) NotifyStreakMilestone(ctx context.Context, userID int32, streak int32) {
@@ -123,20 +146,14 @@ func (s *notificationService) NotifyStreakMilestone(ctx context.Context, userID 
 		return
 	}
 
-	_, err := s.notifRepo.Create(ctx, userID, domain.NotificationTypeStreakMilestone, content[0], content[1])
-	if err != nil {
-		log.Printf("failed to create streak milestone notification for user %d: %v", userID, err)
-	}
+	s.createInAppNotification(ctx, userID, domain.NotificationTypeStreakMilestone, content[0], content[1])
 }
 
 func (s *notificationService) NotifyBadgeEarned(ctx context.Context, userID int32, badgeName string) {
 	title := "Badge Unlocked! 🏅"
 	message := fmt.Sprintf("You just earned the \"%s\" badge. Keep it up!", badgeName)
 
-	_, err := s.notifRepo.Create(ctx, userID, domain.NotificationTypeBadgeEarned, title, message)
-	if err != nil {
-		log.Printf("failed to create badge earned notification for user %d: %v", userID, err)
-	}
+	s.createInAppNotification(ctx, userID, domain.NotificationTypeBadgeEarned, title, message)
 }
 
 // ─────────────────────────────────────────
@@ -146,9 +163,9 @@ func (s *notificationService) NotifyBadgeEarned(ctx context.Context, userID int3
 // SendDailyReminders sends a reminder to all users who haven't completed
 // a session today. Call this from a cron job (e.g. every day at 6PM).
 func (s *notificationService) SendDailyReminders(ctx context.Context) {
-	userIDs, err := s.notifRepo.GetUsersWithNoSessionToday(ctx)
+	userIDs, err := s.notifRepo.GetDailyReminderRecipients(ctx)
 	if err != nil {
-		log.Printf("failed to get users with no session today: %v", err)
+		log.Printf("failed to get daily reminder recipients: %v", err)
 		return
 	}
 
@@ -156,10 +173,7 @@ func (s *notificationService) SendDailyReminders(ctx context.Context) {
 	message := s.getDailyReminderMessage()
 
 	for _, userID := range userIDs {
-		_, err := s.notifRepo.Create(ctx, userID, domain.NotificationTypeDailyReminder, title, message)
-		if err != nil {
-			log.Printf("failed to create daily reminder for user %d: %v", userID, err)
-		}
+		s.createInAppNotification(ctx, userID, domain.NotificationTypeDailyReminder, title, message)
 	}
 
 	log.Printf("daily reminders sent to %d users", len(userIDs))
@@ -168,9 +182,9 @@ func (s *notificationService) SendDailyReminders(ctx context.Context) {
 // SendStreakWarnings sends a warning to users with an active streak who
 // haven't sessioned today. Call this from a cron job (e.g. every day at 8PM).
 func (s *notificationService) SendStreakWarnings(ctx context.Context) {
-	userIDs, err := s.notifRepo.GetUsersWithNoSessionToday(ctx)
+	userIDs, err := s.notifRepo.GetStreakWarningRecipients(ctx)
 	if err != nil {
-		log.Printf("failed to get users for streak warning: %v", err)
+		log.Printf("failed to get streak warning recipients: %v", err)
 		return
 	}
 
@@ -178,10 +192,7 @@ func (s *notificationService) SendStreakWarnings(ctx context.Context) {
 	message := "Don't let your streak slip away! Complete a session before midnight to keep it alive."
 
 	for _, userID := range userIDs {
-		_, err := s.notifRepo.Create(ctx, userID, domain.NotificationTypeStreakWarning, title, message)
-		if err != nil {
-			log.Printf("failed to create streak warning for user %d: %v", userID, err)
-		}
+		s.createInAppNotification(ctx, userID, domain.NotificationTypeStreakWarning, title, message)
 	}
 
 	log.Printf("streak warnings sent to %d users", len(userIDs))
@@ -199,4 +210,21 @@ func (s *notificationService) getDailyReminderMessage() string {
 	// Rotate based on day of year
 	day := time.Now().YearDay()
 	return messages[day%len(messages)]
+}
+
+func (s *notificationService) createInAppNotification(ctx context.Context, userID int32, notifType domain.NotificationType, title, message string) {
+	prefs, err := s.notifRepo.GetPreferences(ctx, userID)
+	if err != nil {
+		log.Printf("failed to load notification preferences for user %d: %v", userID, err)
+		defaults := domain.DefaultNotificationPreferences(userID)
+		prefs = &defaults
+	}
+
+	if !prefs.AllowsInApp(notifType) {
+		return
+	}
+
+	if _, err := s.notifRepo.Create(ctx, userID, notifType, title, message); err != nil {
+		log.Printf("failed to create %s notification for user %d: %v", notifType, userID, err)
+	}
 }
