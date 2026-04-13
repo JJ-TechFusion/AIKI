@@ -1,17 +1,12 @@
 package handler
 
 import (
-	"aiki/internal/pkg/otp_token"
-	"context"
 	"crypto/rand"
 	"encoding/base64"
 	"encoding/json"
-	"errors"
-	"fmt"
 	"io"
 	"net/http"
 	"net/url"
-	"os"
 	"strings"
 	"time"
 
@@ -20,7 +15,6 @@ import (
 	"aiki/internal/pkg/response"
 	"aiki/internal/service"
 
-	"github.com/google/uuid"
 	"github.com/labstack/echo/v4"
 	"github.com/redis/go-redis/v9"
 )
@@ -28,6 +22,7 @@ import (
 type AuthHandler struct {
 	authService              service.AuthService
 	emailVerificationService service.EmailVerificationService
+	passwordResetService     service.PasswordResetService
 	validator                echo.Validator
 	config                   config.Config
 	redis                    *redis.Client
@@ -42,6 +37,7 @@ const (
 func NewAuthHandler(
 	authService service.AuthService,
 	emailVerificationService service.EmailVerificationService,
+	passwordResetService service.PasswordResetService,
 	validator echo.Validator,
 	redis *redis.Client,
 	cfg config.Config,
@@ -49,6 +45,7 @@ func NewAuthHandler(
 	return &AuthHandler{
 		authService:              authService,
 		emailVerificationService: emailVerificationService,
+		passwordResetService:     passwordResetService,
 		validator:                validator,
 		redis:                    redis,
 		config:                   cfg,
@@ -352,91 +349,29 @@ func (h *AuthHandler) ForgottenPassword(c echo.Context) error {
 	if err := h.validator.Validate(&req); err != nil {
 		return response.ValidationError(c, err.Error())
 	}
-	if _, err := h.authService.ForgottenPassword(c.Request().Context(), &req); err != nil {
+
+	data, err := h.passwordResetService.SendResetCode(c.Request().Context(), req.Email)
+	if err != nil {
 		return response.Error(c, err)
 	}
-	// using the session_id to keep track of users movement and the otp sent
-	c.Logger().Info("Generating session id for tracking")
-	sessionId := uuid.New()
-	data := make(map[string]string)
-	data["session_id"] = sessionId.String()
-	ctx := context.Background()
-	c.Logger().Info("Generating otp token")
-	otp, err := otp_token.OTPGenerator()
-	if err != nil {
-		c.Logger().Errorf("failed to generate otp token: %v", err)
-		return response.Error(c, domain.ErrInternalServer)
-	}
-	value := map[string]string{
-		"otp":        otp,
-		"email":      req.Email,
-		"created_at": time.Now().Format(time.RFC3339),
-	}
-	bValue, err := json.Marshal(&value)
-	if err != nil {
-		c.Logger().Errorf("failed to marshal data: %v", err)
-	}
-	if os.Getenv("environment") != "production" {
-		data["otp"] = otp
-	}
-	c.Logger().Info("Storing session id for tracking")
-	key := sessionKey(sessionId.String())
-	if err := h.redis.SetEx(ctx, key, bValue, ExpireInMinute).Err(); err != nil {
-		c.Logger().Errorf("failed to store session id for tracking: %v", err)
-	}
-	return response.Success(c, http.StatusOK, "if the email exists, a password reset link has been sent", data)
+
+	return response.Success(c, http.StatusOK, "if the email exists, a password reset code has been sent", data)
 }
 
 func (h *AuthHandler) ValidateForgottenPasswordOTP(c echo.Context) error {
 	var req domain.ValidateForgotPasswordOTP
-	var err error
-	if err = c.Bind(&req); err != nil {
+	if err := c.Bind(&req); err != nil {
 		return response.ValidationError(c, "invalid request body")
 	}
 	if err := h.validator.Validate(&req); err != nil {
 		return response.ValidationError(c, err.Error())
 	}
 
-	// get otp from redis and compare user input
-	ctx := context.Background()
-	key := sessionKey(req.SessionId)
-	resp := h.redis.Get(ctx, key)
-	if resp.Err() != nil {
-		c.Logger().Errorf("Failed to find session id for current user: %v", resp)
-		return response.Error(c, errors.New("invalid OTP token"))
+	if err := h.passwordResetService.VerifyResetCode(c.Request().Context(), req.SessionId, req.Otp); err != nil {
+		return response.Error(c, err)
 	}
 
-	c.Logger().Infof("Getting session id for tracking user session: %v", resp.Val())
-	jsonData, err := resp.Bytes()
-	if err != nil {
-		c.Logger().Errorf("Failed to get json data: %v", err)
-		return response.Error(c, errors.New("something went wrong please try again"))
-	}
-
-	var value map[string]string
-	if err := json.Unmarshal(jsonData, &value); err != nil {
-		c.Logger().Errorf("failed to unmarshal session data: %v", err)
-		return response.Error(c, errors.New("something went wrong please try again"))
-	}
-
-	fmt.Printf("Validating session id for tracking user session")
-	if value["otp"] != req.Otp {
-		c.Logger().Error("Invalid otp for tracking user session")
-		return response.Error(c, errors.New("invalid OTP token"))
-	}
-	c.Logger().Info("user validation successful")
-	value["isValid"] = "true"
-	jBytes, err := json.Marshal(value)
-	if err != nil {
-		c.Logger().Errorf("failed to marshal data: %v", err)
-		return response.Error(c, errors.New("something went wrong please try again"))
-	}
-
-	if err := h.redis.Set(ctx, key, jBytes, ExpireInMinute).Err(); err != nil {
-		c.Logger().Errorf("failed to store session id for tracking: %v", err)
-		return response.Error(c, errors.New("something went wrong please try again"))
-	}
-	return response.Success(c, http.StatusOK, "user validation successful", value)
+	return response.Success(c, http.StatusOK, "user validation successful", nil)
 }
 
 func (h *AuthHandler) ResetPassword(c echo.Context) error {
@@ -448,33 +383,18 @@ func (h *AuthHandler) ResetPassword(c echo.Context) error {
 	if err := h.validator.Validate(&req); err != nil {
 		return response.ValidationError(c, err.Error())
 	}
-	ctx := context.Background()
-	key := sessionKey(req.SessionId)
-	resp := h.redis.Get(ctx, key)
-	if resp.Err() != nil {
-		c.Logger().Errorf("Failed to find session id for current user: %v", resp)
-		return response.Error(c, errors.New("invalid operation step"))
-	}
-	jsonData, err := resp.Bytes()
-	if err != nil {
-		c.Logger().Errorf("Failed to get json data: %v", err)
-		return response.Error(c, errors.New("something went wrong please try again"))
-	}
-	value := make(map[string]string)
-	if err := json.Unmarshal(jsonData, &value); err != nil {
-		c.Logger().Errorf("failed to unmarshal session data: %v", err)
-		return response.Error(c, errors.New("something went wrong please try again"))
-	}
-	if value["isValid"] != "true" {
-		c.Logger().Error("Invalid user operational step")
-		return response.Error(c, errors.New("unauthorized request access"))
-	}
 
-	if err := h.authService.ResetPassword(c.Request().Context(), value["email"], req.NewPassword); err != nil {
+	email, err := h.passwordResetService.GetVerifiedEmail(c.Request().Context(), req.SessionId)
+	if err != nil {
 		return response.Error(c, err)
 	}
-	if err := h.redis.Del(ctx, key).Err(); err != nil {
-		c.Logger().Errorf("failed to delete session id for tracking user session: %v", err)
+
+	if err := h.authService.ResetPassword(c.Request().Context(), email, req.NewPassword); err != nil {
+		return response.Error(c, err)
+	}
+
+	if err := h.passwordResetService.ClearSession(c.Request().Context(), req.SessionId); err != nil {
+		c.Logger().Errorf("failed to clear password reset session: %v", err)
 	}
 	return response.Success(c, http.StatusOK, "password has been reset successfully", nil)
 }
@@ -537,8 +457,4 @@ func (h *AuthHandler) ResendEmailVerification(c echo.Context) error {
 	}
 
 	return response.Success(c, http.StatusOK, "verification email sent successfully", data)
-}
-
-func sessionKey(key string) string {
-	return fmt.Sprintf("forgotten-password-%s", key)
 }

@@ -82,6 +82,10 @@ type ForgotPasswordRequest struct {
 	Email string `json:"email" validate:"required,email"`
 }
 
+type ForgotPasswordResponse struct {
+	SessionID string `json:"session_id"`
+}
+
 type ValidateForgotPasswordOTP struct {
 	SessionId string `json:"session_id" validate:"required"`
 	Otp       string `json:"otp" validate:"required"`

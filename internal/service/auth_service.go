@@ -20,7 +20,6 @@ type AuthService interface {
 	Login(ctx context.Context, req *domain.LoginRequest) (*domain.AuthResponse, error)
 	RefreshToken(ctx context.Context, refreshToken string) (*domain.AuthResponse, error)
 	Logout(ctx context.Context, refreshToken string) error
-	ForgottenPassword(ctx context.Context, req *domain.ForgotPasswordRequest) (string, error)
 	ResetPassword(ctx context.Context, userEmail, newPassword string) error
 	LinkedInLogin(ctx context.Context, linkedInID, email, firstName, lastName string) (*domain.AuthResponse, error)
 }
@@ -172,15 +171,6 @@ func (s *authService) RefreshToken(ctx context.Context, refreshToken string) (*d
 
 func (s *authService) Logout(ctx context.Context, refreshToken string) error {
 	return s.userRepo.DeleteRefreshToken(ctx, refreshToken)
-}
-
-func (s *authService) ForgottenPassword(ctx context.Context, req *domain.ForgotPasswordRequest) (string, error) {
-	user, err := s.userRepo.GetByEmail(ctx, req.Email)
-	if err != nil {
-		return "", err
-	}
-	// TODO: implement sending token to email
-	return user.Email, nil
 }
 
 func (s *authService) ResetPassword(ctx context.Context, userEmail, newPassword string) error {
