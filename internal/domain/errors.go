@@ -77,6 +77,12 @@ func GetHTTPStatus(err error) int {
 		return http.StatusUnauthorized
 	case errors.Is(err, ErrInvalidToken), errors.Is(err, ErrTokenExpired):
 		return http.StatusUnauthorized
+	case errors.Is(err, ErrInvalidInput), errors.Is(err, ErrWeakPassword), errors.Is(err, ErrEmptyMessages):
+		return http.StatusBadRequest
+	case errors.Is(err, ErrProviderNotFound):
+		return http.StatusUnprocessableEntity
+	case errors.Is(err, ErrProviderNotConfigured):
+		return http.StatusServiceUnavailable
 	case errors.Is(err, ErrInvalidInput), errors.Is(err, ErrWeakPassword), errors.Is(err, ErrNoApplyLink), errors.Is(err, ErrInvalidVerificationCode):
 		return http.StatusBadRequest
 	case errors.Is(err, ErrVerificationCodeExpired):

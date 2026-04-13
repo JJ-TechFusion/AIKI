@@ -16,6 +16,7 @@ func Setup(
 	homeHandler *handler.HomeHandler,
 	notifHandler *handler.NotificationHandler,
 	serpHandler *handler.SerpJobHandler,
+	chatHandler *handler.ChatHandler,
 	jwtManager *jwt.Manager,
 ) {
 	api := e.Group("/api/v1")
@@ -121,5 +122,13 @@ func Setup(
 		notifs.PATCH("/read-all", notifHandler.MarkAllRead)
 		notifs.PATCH("/:id/read", notifHandler.MarkRead)
 		notifs.DELETE("/:id", notifHandler.DeleteNotification)
+	}
+
+	// AI Chat
+	chat := api.Group("/chat")
+	chat.Use(middleware.Auth(jwtManager))
+	{
+		chat.POST("", chatHandler.Chat)
+		chat.GET("/providers", chatHandler.GetProviders)
 	}
 }
