@@ -31,6 +31,7 @@ type OpenAIConfig struct {
 type AnthropicConfig struct {
 	APIKey       string
 	DefaultModel string
+	Email    EmailConfig
 }
 
 type SerpConfig struct {
@@ -70,6 +71,12 @@ type LinkedInConfig struct {
 	ClientID          string
 	ClientSecret      string
 	ClientCallbackUrl string
+}
+
+type EmailConfig struct {
+	ResendAPIKey string
+	FromEmail    string
+	FromName     string
 }
 
 func Load() (*Config, error) {
@@ -119,6 +126,10 @@ func Load() (*Config, error) {
 				APIKey:       getEnv("ANTHROPIC_API_KEY", ""),
 				DefaultModel: getEnv("ANTHROPIC_DEFAULT_MODEL", "claude-haiku-4-5-20251001"),
 			},
+		Email: EmailConfig{
+			ResendAPIKey: getEnv("RESEND_API_KEY", ""),
+			FromEmail:    getEnv("EMAIL_FROM_ADDRESS", "no-reply@aiki.app"),
+			FromName:     getEnv("EMAIL_FROM_NAME", "Aiki"),
 		},
 	}
 

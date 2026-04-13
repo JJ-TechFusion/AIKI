@@ -20,19 +20,21 @@ type User struct {
 
 // UserProfile Details
 type UserProfile struct {
-	UserId          int32     `json:"user_id"`
-	FullName        string    `json:"full_name"`
-	CurrentJob      string    `json:"current_job"`
-	ExperienceLevel string    `json:"experience_level"`
-	Goals           []string  `json:"goals"`
-	UpdatedAt       time.Time `json:"updated_at"`
+	UserId            int32     `json:"user_id"`
+	FullName          string    `json:"full_name"`
+	CurrentJob        string    `json:"current_job"`
+	ExperienceLevel   string    `json:"experience_level"`
+	Goals             []string  `json:"goals"`
+	JobSearchLocation string    `json:"job_search_location,omitempty"`
+	HasCV             bool      `json:"has_cv"`
+	UpdatedAt         time.Time `json:"updated_at"`
 }
 
 type UserProfileRequest struct {
 	FullName        string   `json:"full_name" validate:"required,min=7,max=200"`
 	CurrentJob      string   `json:"current_job" validate:"required,min=5,max=200"`
 	ExperienceLevel string   `json:"experience_level" validate:"required,min=5,max=200"`
-	Goals           []string `json:"goals" validate:"required,min=1"`
+	Goals           []string `json:"goals,omitempty" validate:"omitempty"`
 }
 
 // RegisterRequest represents the request to register a new user
@@ -57,6 +59,16 @@ type AuthResponse struct {
 // RefreshTokenRequest represents the request to refresh access token
 type RefreshTokenRequest struct {
 	RefreshToken string `json:"refresh_token" validate:"required"`
+}
+
+type VerifyEmailRequest struct {
+	Otp string `json:"otp" validate:"required,len=6,numeric"`
+}
+
+type EmailVerificationResponse struct {
+	ExpiresInSeconds int    `json:"expires_in_seconds"`
+	ResendInSeconds  int    `json:"resend_in_seconds"`
+	DebugOtp         string `json:"otp,omitempty"`
 }
 
 // UpdateUserRequest represents the request to update user information

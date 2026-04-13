@@ -26,8 +26,11 @@ func (m *MockUserRepository) UpdateUserPassword(ctx context.Context, userID int3
 }
 
 func (m *MockUserRepository) CreateUserProfile(ctx context.Context, userId int32, fullName, currentJob, experienceLevel *string, goals []string) (*domain.UserProfile, error) {
-	//TODO implement me
-	panic("implement me")
+	args := m.Called(ctx, userId, fullName, currentJob, experienceLevel, goals)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*domain.UserProfile), args.Error(1)
 }
 
 func (m *MockUserRepository) UpdateUserProfile(ctx context.Context, userId int32, fullName, currentJob, experienceLevel *string, goals []string) (*domain.UserProfile, error) {
@@ -36,8 +39,15 @@ func (m *MockUserRepository) UpdateUserProfile(ctx context.Context, userId int32
 }
 
 func (m *MockUserRepository) GetUserProfileByID(ctx context.Context, userId int32) (*domain.UserProfile, error) {
-	//TODO implement me
-	panic("implement me")
+	args := m.Called(ctx, userId)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*domain.UserProfile), args.Error(1)
+}
+
+func (m *MockUserRepository) UpdateUserJobSearchLocation(ctx context.Context, userID int32, jobSearchLocation string) error {
+	return nil
 }
 
 func (m *MockUserRepository) Create(ctx context.Context, user *domain.User, passwordHash string) (*domain.User, error) {
@@ -77,6 +87,14 @@ func (m *MockUserRepository) EmailExists(ctx context.Context, email string) (boo
 	return args.Bool(0), args.Error(1)
 }
 
+func (m *MockUserRepository) IsEmailVerified(ctx context.Context, userID int32) (bool, error) {
+	return false, nil
+}
+
+func (m *MockUserRepository) MarkEmailVerified(ctx context.Context, userID int32) error {
+	return nil
+}
+
 func (m *MockUserRepository) CreateRefreshToken(ctx context.Context, userID int32, token string, expiresAt time.Time) error {
 	args := m.Called(ctx, userID, token, mock.Anything)
 	return args.Error(0)
@@ -97,8 +115,16 @@ func (m *MockUserRepository) DeleteUserRefreshTokens(ctx context.Context, userID
 	return args.Error(0)
 }
 func (m *MockUserRepository) UploadCV(ctx context.Context, userID int32, data []byte) error {
-	//TODO implement me
-	panic("implement me")
+	args := m.Called(ctx, userID, data)
+	return args.Error(0)
+}
+
+func (m *MockUserRepository) GetUserCV(ctx context.Context, userID int32) ([]byte, error) {
+	args := m.Called(ctx, userID)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]byte), args.Error(1)
 }
 
 func (m *MockUserRepository) GetByLinkedInID(ctx context.Context, linkedInID string) (*domain.User, error) {
@@ -259,6 +285,53 @@ func TestAuthService_Login(t *testing.T) {
 		assert.ErrorIs(t, err, domain.ErrInvalidCredentials)
 		mockRepo.AssertExpectations(t)
 	})
+}
+
+func TestAuthService_LinkedInLogin_CreatesMissingProfile(t *testing.T) {
+	mockRepo := new(MockUserRepository)
+	jwtManager := jwt.NewManager("test-secret", 15*time.Minute, 7*24*time.Hour)
+	service := NewAuthService(mockRepo, jwtManager)
+	ctx := context.Background()
+
+	firstName := "Jane"
+	lastName := "Doe"
+	email := "jane@example.com"
+	linkedInID := "linkedin-123"
+	fullName := "Jane Doe"
+
+	linkedInUser := &domain.User{
+		ID:         7,
+		Email:      email,
+		FirstName:  &firstName,
+		LastName:   &lastName,
+		LinkedInID: &linkedInID,
+		IsActive:   true,
+		CreatedAt:  time.Now(),
+		UpdatedAt:  time.Now(),
+	}
+
+	createdProfile := &domain.UserProfile{
+		UserId:   linkedInUser.ID,
+		FullName: fullName,
+	}
+
+	mockRepo.On("GetByLinkedInID", ctx, linkedInID).
+		Return(linkedInUser, nil).Once()
+	mockRepo.On("GetUserProfileByID", ctx, linkedInUser.ID).
+		Return(nil, domain.ErrUserNotFound).Once()
+	mockRepo.On("CreateUserProfile", ctx, linkedInUser.ID, &fullName, (*string)(nil), (*string)(nil), []string(nil)).
+		Return(createdProfile, nil).Once()
+	mockRepo.On("DeleteUserRefreshTokens", ctx, linkedInUser.ID).
+		Return(nil).Once()
+	mockRepo.On("CreateRefreshToken", ctx, linkedInUser.ID, mock.AnythingOfType("string"), mock.Anything).
+		Return(nil).Once()
+
+	resp, err := service.LinkedInLogin(ctx, linkedInID, email, firstName, lastName)
+
+	require.NoError(t, err)
+	require.NotNil(t, resp)
+	assert.Equal(t, linkedInUser.Email, resp.User.Email)
+	mockRepo.AssertExpectations(t)
 }
 
 func TestAuthService_RefreshToken(t *testing.T) {

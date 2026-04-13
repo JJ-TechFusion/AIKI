@@ -31,9 +31,13 @@ func NewJobRepository(dbPool *pgxpool.Pool) JobRepository {
 }
 
 func (jr *jobRepository) Create(ctx context.Context, job *domain.Job) (int32, error) {
-	dateApplied, err := time.Parse("2006-01-02", job.DateApplied)
-	if err != nil {
-		return 0, domain.ErrInvalidDateFormat
+	var dateApplied pgtype.Timestamp
+	if job.DateApplied != "" {
+		t, err := time.Parse("2006-01-02", job.DateApplied)
+		if err != nil {
+			return 0, domain.ErrInvalidDateFormat
+		}
+		dateApplied = PgTimeHelper(t)
 	}
 
 	newJob := db.CreateJobParams{
@@ -41,9 +45,10 @@ func (jr *jobRepository) Create(ctx context.Context, job *domain.Job) (int32, er
 		Title:       job.Title,
 		CompanyName: &job.CompanyName,
 		Notes:       &job.Notes,
+		Link:        nullableString(job.Link),
 		Location:    &job.Location,
 		Platform:    &job.Platform,
-		DateApplied: PgTimeHelper(dateApplied),
+		DateApplied: dateApplied,
 		Status:      job.Status,
 	}
 	createdJob, err := jr.db.CreateJob(ctx, newJob)
@@ -55,22 +60,23 @@ func (jr *jobRepository) Create(ctx context.Context, job *domain.Job) (int32, er
 }
 
 func (jr *jobRepository) Update(ctx context.Context, jobId int32, job *domain.Job) error {
-	var dateApplied time.Time
-	var err error
+	var dateApplied pgtype.Timestamp
 	if job.DateApplied != "" {
-		dateApplied, err = time.Parse("2006-01-02", job.DateApplied)
+		t, err := time.Parse("2006-01-02", job.DateApplied)
 		if err != nil {
 			return domain.ErrInvalidDateFormat
 		}
+		dateApplied = PgTimeHelper(t)
 	}
-	err = jr.db.UpdateJobByID(ctx, db.UpdateJobByIDParams{
+	err := jr.db.UpdateJobByID(ctx, db.UpdateJobByIDParams{
 		ID:          jobId,
 		Title:       &job.Title,
 		CompanyName: &job.CompanyName,
 		Notes:       &job.Notes,
+		Link:        nullableString(job.Link),
 		Location:    &job.Location,
 		Platform:    &job.Platform,
-		DateApplied: PgTimeHelper(dateApplied),
+		DateApplied: dateApplied,
 		Status:      &job.Status,
 	})
 	if err != nil {
@@ -94,17 +100,22 @@ func (jr *jobRepository) GetJobByID(ctx context.Context, jobId int32) (*domain.J
 	if err != nil {
 		return &domain.Job{}, domain.ErrInvalidJobID
 	}
-	return &domain.Job{
+	out := &domain.Job{
 		ID:          jobId,
 		UserId:      job.UserID,
 		Title:       job.Title,
-		CompanyName: *job.CompanyName,
-		Notes:       *job.Notes,
-		Location:    *job.Location,
+		CompanyName: derefString(job.CompanyName),
+		Notes:       derefString(job.Notes),
+		Location:    derefString(job.Location),
 		Status:      job.Status,
-		Link:        *job.Link,
+		Link:        derefString(job.Link),
+		Platform:    derefString(job.Platform),
 		CreatedAt:   job.CreatedAt.Time,
-	}, nil
+	}
+	if job.DateApplied.Valid {
+		out.DateApplied = job.DateApplied.Time.Format("2006-01-02")
+	}
+	return out, nil
 }
 
 func (jr *jobRepository) GetAllJobs(ctx context.Context, userId int32) ([]db.Job, error) {

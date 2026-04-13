@@ -569,7 +569,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "Fetches jobs from SerpApi based on user profile (job title + experience level). Returns cached results if fetched within 24 hours.",
+                "description": "Fetches jobs from SerpApi based on user profile (job title + experience level). Optional query param ` + "`" + `location` + "`" + ` (e.g. Austin, TX or United States) is passed to SerpApi as the job location filter. Returns cached results if fetched within 24 hours for the same location.",
                 "produces": [
                     "application/json"
                 ],
@@ -577,6 +577,14 @@ const docTemplate = `{
                     "job-search"
                 ],
                 "summary": "Get recommended jobs",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Job location filter (e.g. Seattle, WA) — forwarded to SerpApi Google Jobs",
+                        "name": "location",
+                        "in": "query"
+                    }
+                ],
                 "responses": {
                     "200": {
                         "description": "OK",
@@ -604,6 +612,81 @@ const docTemplate = `{
                     },
                     "401": {
                         "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/jobs/recommended/{id}/apply": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Creates or updates a tracker row with status applied, links the Serp cache row, and returns apply_url (Google Jobs share link) for opening in an in-app browser or external browser.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "job-search"
+                ],
+                "summary": "Record an application and get the apply URL",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Cache job ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Optional notes",
+                        "name": "request",
+                        "in": "body",
+                        "schema": {
+                            "$ref": "#/definitions/domain.DirectApplyRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/response.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/domain.DirectApplyResult"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
                         "schema": {
                             "$ref": "#/definitions/response.Response"
                         }
@@ -1546,6 +1629,43 @@ const docTemplate = `{
                 }
             }
         },
+        "/users/cv": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Download the currently authenticated user's uploaded CV",
+                "produces": [
+                    "application/pdf"
+                ],
+                "tags": [
+                    "users"
+                ],
+                "summary": "Get user CV",
+                "responses": {
+                    "200": {
+                        "description": "CV contents",
+                        "schema": {
+                            "type": "file"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    }
+                }
+            }
+        },
         "/users/me": {
             "get": {
                 "security": [
@@ -1666,6 +1786,56 @@ const docTemplate = `{
             }
         },
         "/users/profile": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Get the currently authenticated user's profile for onboarding tracking",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "users"
+                ],
+                "summary": "Get user profile",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/response.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/domain.UserProfile"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    }
+                }
+            },
             "post": {
                 "security": [
                     {
@@ -1889,6 +2059,25 @@ const docTemplate = `{
                 },
                 "name": {
                     "type": "string"
+                }
+            }
+        },
+        "domain.DirectApplyRequest": {
+            "type": "object",
+            "properties": {
+                "notes": {
+                    "type": "string"
+                }
+            }
+        },
+        "domain.DirectApplyResult": {
+            "type": "object",
+            "properties": {
+                "apply_url": {
+                    "type": "string"
+                },
+                "job": {
+                    "$ref": "#/definitions/domain.Job"
                 }
             }
         },
@@ -2199,6 +2388,9 @@ const docTemplate = `{
                 "title": {
                     "type": "string"
                 },
+                "tracker_job_id": {
+                    "type": "integer"
+                },
                 "user_id": {
                     "type": "integer"
                 }
@@ -2369,6 +2561,12 @@ const docTemplate = `{
                         "type": "string"
                     }
                 },
+                "has_cv": {
+                    "type": "boolean"
+                },
+                "job_search_location": {
+                    "type": "string"
+                },
                 "updated_at": {
                     "type": "string"
                 },
@@ -2382,8 +2580,7 @@ const docTemplate = `{
             "required": [
                 "current_job",
                 "experience_level",
-                "full_name",
-                "goals"
+                "full_name"
             ],
             "properties": {
                 "current_job": {
@@ -2403,7 +2600,6 @@ const docTemplate = `{
                 },
                 "goals": {
                     "type": "array",
-                    "minItems": 1,
                     "items": {
                         "type": "string"
                     }

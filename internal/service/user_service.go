@@ -16,6 +16,7 @@ type UserService interface {
 	UpdateUserProfile(ctx context.Context, userProfile domain.UserProfile) (*domain.UserProfile, error)
 	GetUserProfile(ctx context.Context, id int32) (*domain.UserProfile, error)
 	UploadUserCV(ctx context.Context, id int32, data []byte) error
+	GetUserCV(ctx context.Context, id int32) ([]byte, error)
 }
 
 type userService struct {
@@ -112,4 +113,12 @@ func (s *userService) UploadUserCV(ctx context.Context, id int32, data []byte) e
 	}
 
 	return nil
+}
+
+func (s *userService) GetUserCV(ctx context.Context, id int32) ([]byte, error) {
+	cv, err := s.userRepo.GetUserCV(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+	return cv, nil
 }

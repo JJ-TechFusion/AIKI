@@ -82,11 +82,20 @@ type DailyProgress struct {
 }
 
 type ProgressSummary struct {
+	TotalFocusSeconds int64                `json:"total_focus_seconds"`
+	TotalFocusHours   float64              `json:"total_focus_hours"`
+	SessionsCompleted int64                `json:"sessions_completed"`
+	DaysActive        int64                `json:"days_active"`
+	Period            string               `json:"period"` // weekly | monthly | yearly
+	ChartPoints       []ProgressChartPoint `json:"chart_points"`
+}
+
+type ProgressChartPoint struct {
+	Label             string  `json:"label"`
+	BucketKey         string  `json:"bucket_key"`
 	TotalFocusSeconds int64   `json:"total_focus_seconds"`
 	TotalFocusHours   float64 `json:"total_focus_hours"`
 	SessionsCompleted int64   `json:"sessions_completed"`
-	DaysActive        int64   `json:"days_active"`
-	Period            string  `json:"period"` // weekly | monthly | yearly
 }
 
 // HomeScreenData is the aggregated payload for the home screen

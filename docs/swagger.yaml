@@ -26,6 +26,18 @@ definitions:
       name:
         type: string
     type: object
+  domain.DirectApplyRequest:
+    properties:
+      notes:
+        type: string
+    type: object
+  domain.DirectApplyResult:
+    properties:
+      apply_url:
+        type: string
+      job:
+        $ref: '#/definitions/domain.Job'
+    type: object
   domain.FocusSession:
     properties:
       created_at:
@@ -233,6 +245,8 @@ definitions:
         type: boolean
       title:
         type: string
+      tracker_job_id:
+        type: integer
       user_id:
         type: integer
     type: object
@@ -349,6 +363,10 @@ definitions:
         items:
           type: string
         type: array
+      has_cv:
+        type: boolean
+      job_search_location:
+        type: string
       updated_at:
         type: string
       user_id:
@@ -371,13 +389,11 @@ definitions:
       goals:
         items:
           type: string
-        minItems: 1
         type: array
     required:
     - current_job
     - experience_level
     - full_name
-    - goals
     type: object
   response.Response:
     properties:
@@ -846,7 +862,15 @@ paths:
   /jobs/recommended:
     get:
       description: Fetches jobs from SerpApi based on user profile (job title + experience
-        level). Returns cached results if fetched within 24 hours.
+        level). Optional query param `location` (e.g. Austin, TX or United States)
+        is passed to SerpApi as the job location filter. Returns cached results if
+        fetched within 24 hours for the same location.
+      parameters:
+      - description: Job location filter (e.g. Seattle, WA) — forwarded to SerpApi
+          Google Jobs
+        in: query
+        name: location
+        type: string
       produces:
       - application/json
       responses:
@@ -870,6 +894,53 @@ paths:
       security:
       - BearerAuth: []
       summary: Get recommended jobs
+      tags:
+      - job-search
+  /jobs/recommended/{id}/apply:
+    post:
+      consumes:
+      - application/json
+      description: Creates or updates a tracker row with status applied, links the
+        Serp cache row, and returns apply_url (Google Jobs share link) for opening
+        in an in-app browser or external browser.
+      parameters:
+      - description: Cache job ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Optional notes
+        in: body
+        name: request
+        schema:
+          $ref: '#/definitions/domain.DirectApplyRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/domain.DirectApplyResult'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.Response'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.Response'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/response.Response'
+      security:
+      - BearerAuth: []
+      summary: Record an application and get the apply URL
       tags:
       - job-search
   /jobs/recommended/{id}/save:
@@ -1310,6 +1381,29 @@ paths:
       summary: Get user streak
       tags:
       - streaks
+  /users/cv:
+    get:
+      description: Download the currently authenticated user's uploaded CV
+      produces:
+      - application/pdf
+      responses:
+        "200":
+          description: CV contents
+          schema:
+            type: file
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.Response'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/response.Response'
+      security:
+      - BearerAuth: []
+      summary: Get user CV
+      tags:
+      - users
   /users/me:
     get:
       consumes:
@@ -1381,6 +1475,35 @@ paths:
       tags:
       - users
   /users/profile:
+    get:
+      consumes:
+      - application/json
+      description: Get the currently authenticated user's profile for onboarding tracking
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/domain.UserProfile'
+              type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.Response'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/response.Response'
+      security:
+      - BearerAuth: []
+      summary: Get user profile
+      tags:
+      - users
     patch:
       consumes:
       - application/json

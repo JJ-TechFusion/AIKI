@@ -84,6 +84,7 @@ type SerpJobCache struct {
 	PostedAt       *string          `json:"posted_at"`
 	Salary         *string          `json:"salary"`
 	SavedToTracker bool             `json:"saved_to_tracker"`
+	TrackerJobID   *int32           `json:"tracker_job_id"`
 	FetchedAt      pgtype.Timestamp `json:"fetched_at"`
 }
 
@@ -117,12 +118,13 @@ type UserBadge struct {
 }
 
 type UserProfile struct {
-	ID              int32            `json:"id"`
-	UserID          int32            `json:"user_id"`
-	Cv              []byte           `json:"cv"`
-	FullName        *string          `json:"full_name"`
-	CurrentJob      *string          `json:"current_job"`
-	ExperienceLevel *string          `json:"experience_level"`
-	Goals           []string         `json:"goals"`
-	UpdatedAt       pgtype.Timestamp `json:"updated_at"`
+	ID                int32            `json:"id"`
+	UserID            int32            `json:"user_id"`
+	Cv                []byte           `json:"cv"`
+	FullName          *string          `json:"full_name"`
+	CurrentJob        *string          `json:"current_job"`
+	ExperienceLevel   *string          `json:"experience_level"`
+	Goals             []string         `json:"goals"`
+	JobSearchLocation string           `json:"job_search_location"`
+	UpdatedAt         pgtype.Timestamp `json:"updated_at"`
 }

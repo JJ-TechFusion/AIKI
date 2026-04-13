@@ -23,7 +23,7 @@ func (q *Queries) DeleteOldCacheForUser(ctx context.Context, userID int32) error
 }
 
 const getCachedJobByID = `-- name: GetCachedJobByID :one
-SELECT id, user_id, external_id, title, company_name, location, description, link, platform, posted_at, salary, saved_to_tracker, fetched_at FROM serp_job_cache
+SELECT id, user_id, external_id, title, company_name, location, description, link, platform, posted_at, salary, saved_to_tracker, tracker_job_id, fetched_at FROM serp_job_cache
 WHERE id = $1 AND user_id = $2
 LIMIT 1
 `
@@ -49,13 +49,47 @@ func (q *Queries) GetCachedJobByID(ctx context.Context, arg GetCachedJobByIDPara
 		&i.PostedAt,
 		&i.Salary,
 		&i.SavedToTracker,
+		&i.TrackerJobID,
+		&i.FetchedAt,
+	)
+	return i, err
+}
+
+const getCachedJobByTrackerID = `-- name: GetCachedJobByTrackerID :one
+SELECT id, user_id, external_id, title, company_name, location, description, link, platform, posted_at, salary, saved_to_tracker, tracker_job_id, fetched_at FROM serp_job_cache
+WHERE tracker_job_id = $1 AND user_id = $2
+LIMIT 1
+`
+
+type GetCachedJobByTrackerIDParams struct {
+	TrackerJobID *int32 `json:"tracker_job_id"`
+	UserID       int32  `json:"user_id"`
+}
+
+func (q *Queries) GetCachedJobByTrackerID(ctx context.Context, arg GetCachedJobByTrackerIDParams) (SerpJobCache, error) {
+	row := q.db.QueryRow(ctx, getCachedJobByTrackerID, arg.TrackerJobID, arg.UserID)
+	var i SerpJobCache
+	err := row.Scan(
+		&i.ID,
+		&i.UserID,
+		&i.ExternalID,
+		&i.Title,
+		&i.CompanyName,
+		&i.Location,
+		&i.Description,
+		&i.Link,
+		&i.Platform,
+		&i.PostedAt,
+		&i.Salary,
+		&i.SavedToTracker,
+		&i.TrackerJobID,
 		&i.FetchedAt,
 	)
 	return i, err
 }
 
 const getCachedJobsByUserID = `-- name: GetCachedJobsByUserID :many
-SELECT id, user_id, external_id, title, company_name, location, description, link, platform, posted_at, salary, saved_to_tracker, fetched_at FROM serp_job_cache
+SELECT id, user_id, external_id, title, company_name, location, description, link, platform, posted_at, salary, saved_to_tracker, tracker_job_id, fetched_at FROM serp_job_cache
 WHERE user_id = $1
 ORDER BY fetched_at DESC
 LIMIT $2 OFFSET $3
@@ -89,6 +123,7 @@ func (q *Queries) GetCachedJobsByUserID(ctx context.Context, arg GetCachedJobsBy
 			&i.PostedAt,
 			&i.Salary,
 			&i.SavedToTracker,
+			&i.TrackerJobID,
 			&i.FetchedAt,
 		); err != nil {
 			return nil, err
@@ -117,17 +152,19 @@ func (q *Queries) GetLatestCacheFetchTime(ctx context.Context, userID int32) (pg
 
 const markJobSavedToTracker = `-- name: MarkJobSavedToTracker :exec
 UPDATE serp_job_cache
-SET saved_to_tracker = TRUE
+SET saved_to_tracker = TRUE,
+    tracker_job_id = $3
 WHERE id = $1 AND user_id = $2
 `
 
 type MarkJobSavedToTrackerParams struct {
-	ID     int32 `json:"id"`
-	UserID int32 `json:"user_id"`
+	ID           int32  `json:"id"`
+	UserID       int32  `json:"user_id"`
+	TrackerJobID *int32 `json:"tracker_job_id"`
 }
 
 func (q *Queries) MarkJobSavedToTracker(ctx context.Context, arg MarkJobSavedToTrackerParams) error {
-	_, err := q.db.Exec(ctx, markJobSavedToTracker, arg.ID, arg.UserID)
+	_, err := q.db.Exec(ctx, markJobSavedToTracker, arg.ID, arg.UserID, arg.TrackerJobID)
 	return err
 }
 
@@ -155,7 +192,7 @@ INSERT INTO serp_job_cache (
     posted_at    = EXCLUDED.posted_at,
     salary       = EXCLUDED.salary,
     fetched_at   = NOW()
-RETURNING id, user_id, external_id, title, company_name, location, description, link, platform, posted_at, salary, saved_to_tracker, fetched_at
+RETURNING id, user_id, external_id, title, company_name, location, description, link, platform, posted_at, salary, saved_to_tracker, tracker_job_id, fetched_at
 `
 
 type UpsertSerpJobCacheParams struct {
@@ -198,6 +235,7 @@ func (q *Queries) UpsertSerpJobCache(ctx context.Context, arg UpsertSerpJobCache
 		&i.PostedAt,
 		&i.Salary,
 		&i.SavedToTracker,
+		&i.TrackerJobID,
 		&i.FetchedAt,
 	)
 	return i, err

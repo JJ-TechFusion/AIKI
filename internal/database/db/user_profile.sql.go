@@ -18,7 +18,7 @@ INSERT INTO user_profile (
     goals
 ) VALUES (
     $1, $2, $3, $4, $5
-) RETURNING id, user_id, cv, full_name, current_job, experience_level, goals, updated_at
+) RETURNING id, user_id, cv, full_name, current_job, experience_level, goals, job_search_location, updated_at
 `
 
 type CreateUserProfileParams struct {
@@ -46,13 +46,27 @@ func (q *Queries) CreateUserProfile(ctx context.Context, arg CreateUserProfilePa
 		&i.CurrentJob,
 		&i.ExperienceLevel,
 		&i.Goals,
+		&i.JobSearchLocation,
 		&i.UpdatedAt,
 	)
 	return i, err
 }
 
+const getUserCV = `-- name: GetUserCV :one
+SELECT cv FROM user_profile
+WHERE user_id = $1
+LIMIT 1
+`
+
+func (q *Queries) GetUserCV(ctx context.Context, userID int32) ([]byte, error) {
+	row := q.db.QueryRow(ctx, getUserCV, userID)
+	var cv []byte
+	err := row.Scan(&cv)
+	return cv, err
+}
+
 const getUserProfileByUserID = `-- name: GetUserProfileByUserID :one
-SELECT id, user_id, cv, full_name, current_job, experience_level, goals, updated_at FROM user_profile
+SELECT id, user_id, cv, full_name, current_job, experience_level, goals, job_search_location, updated_at FROM user_profile
 WHERE user_id = $1
 LIMIT 1
 `
@@ -68,9 +82,27 @@ func (q *Queries) GetUserProfileByUserID(ctx context.Context, userID int32) (Use
 		&i.CurrentJob,
 		&i.ExperienceLevel,
 		&i.Goals,
+		&i.JobSearchLocation,
 		&i.UpdatedAt,
 	)
 	return i, err
+}
+
+const updateUserJobSearchLocation = `-- name: UpdateUserJobSearchLocation :exec
+UPDATE user_profile
+SET job_search_location = $2,
+    updated_at = NOW()
+WHERE user_id = $1
+`
+
+type UpdateUserJobSearchLocationParams struct {
+	UserID            int32  `json:"user_id"`
+	JobSearchLocation string `json:"job_search_location"`
+}
+
+func (q *Queries) UpdateUserJobSearchLocation(ctx context.Context, arg UpdateUserJobSearchLocationParams) error {
+	_, err := q.db.Exec(ctx, updateUserJobSearchLocation, arg.UserID, arg.JobSearchLocation)
+	return err
 }
 
 const updateUserProfile = `-- name: UpdateUserProfile :one
@@ -82,7 +114,7 @@ SET
     goals = CASE WHEN $5::text[] IS NOT NULL THEN $5 ELSE goals END,
     updated_at = NOW()
 WHERE user_id = $1
-RETURNING id, user_id, cv, full_name, current_job, experience_level, goals, updated_at
+RETURNING id, user_id, cv, full_name, current_job, experience_level, goals, job_search_location, updated_at
 `
 
 type UpdateUserProfileParams struct {
@@ -110,6 +142,7 @@ func (q *Queries) UpdateUserProfile(ctx context.Context, arg UpdateUserProfilePa
 		&i.CurrentJob,
 		&i.ExperienceLevel,
 		&i.Goals,
+		&i.JobSearchLocation,
 		&i.UpdatedAt,
 	)
 	return i, err
@@ -121,7 +154,7 @@ SET
     cv = $2,
     updated_at = NOW()
 WHERE user_id = $1
-RETURNING id, user_id, cv, full_name, current_job, experience_level, goals, updated_at
+RETURNING id, user_id, cv, full_name, current_job, experience_level, goals, job_search_location, updated_at
 `
 
 type UploadUserCVParams struct {
@@ -140,6 +173,7 @@ func (q *Queries) UploadUserCV(ctx context.Context, arg UploadUserCVParams) (Use
 		&i.CurrentJob,
 		&i.ExperienceLevel,
 		&i.Goals,
+		&i.JobSearchLocation,
 		&i.UpdatedAt,
 	)
 	return i, err

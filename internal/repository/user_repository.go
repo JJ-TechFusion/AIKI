@@ -22,6 +22,8 @@ type UserRepository interface {
 	GetByEmail(ctx context.Context, email string) (*domain.User, error)
 	Update(ctx context.Context, id int32, firstName, lastName *string, phoneNumber *string) (*domain.User, error)
 	EmailExists(ctx context.Context, email string) (bool, error)
+	IsEmailVerified(ctx context.Context, userID int32) (bool, error)
+	MarkEmailVerified(ctx context.Context, userID int32) error
 	CreateRefreshToken(ctx context.Context, userID int32, token string, expiresAt time.Time) error
 	GetRefreshToken(ctx context.Context, token string) (int32, error)
 	DeleteRefreshToken(ctx context.Context, token string) error
@@ -30,7 +32,9 @@ type UserRepository interface {
 	CreateUserProfile(ctx context.Context, userId int32, fullName, currentJob, experienceLevel *string, goals []string) (*domain.UserProfile, error)
 	UpdateUserProfile(ctx context.Context, userId int32, fullName, currentJob, experienceLevel *string, goals []string) (*domain.UserProfile, error)
 	GetUserProfileByID(ctx context.Context, userId int32) (*domain.UserProfile, error)
+	UpdateUserJobSearchLocation(ctx context.Context, userID int32, jobSearchLocation string) error
 	UploadCV(ctx context.Context, userId int32, data []byte) error
+	GetUserCV(ctx context.Context, userID int32) ([]byte, error)
 	GetByLinkedInID(ctx context.Context, linkedInID string) (*domain.User, error)
 	CreateLinkedInUser(ctx context.Context, email, linkedInID string, firstName, lastName *string) (*domain.User, error)
 	UpdateLinkedInID(ctx context.Context, userID int32, linkedInID string, firstName, lastName *string) error
@@ -181,6 +185,43 @@ func (r *userRepository) EmailExists(ctx context.Context, email string) (bool, e
 	return exists, nil
 }
 
+func (r *userRepository) IsEmailVerified(ctx context.Context, userID int32) (bool, error) {
+	query := `
+		SELECT email_verified_at IS NOT NULL
+		FROM users
+		WHERE id = $1 AND is_active = TRUE
+	`
+
+	var isVerified bool
+	err := r.db.QueryRow(ctx, query, userID).Scan(&isVerified)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return false, domain.ErrUserNotFound
+		}
+		return false, err
+	}
+
+	return isVerified, nil
+}
+
+func (r *userRepository) MarkEmailVerified(ctx context.Context, userID int32) error {
+	query := `
+		UPDATE users
+		SET email_verified_at = NOW(), updated_at = NOW()
+		WHERE id = $1 AND is_active = TRUE
+	`
+
+	commandTag, err := r.db.Exec(ctx, query, userID)
+	if err != nil {
+		return err
+	}
+	if commandTag.RowsAffected() == 0 {
+		return domain.ErrUserNotFound
+	}
+
+	return nil
+}
+
 func (r *userRepository) CreateRefreshToken(ctx context.Context, userID int32, token string, expiresAt time.Time) error {
 	query := `
 		INSERT INTO refresh_tokens (user_id, token, expires_at)
@@ -266,12 +307,14 @@ func (r *userRepository) CreateUserProfile(ctx context.Context, userId int32, fu
 
 	fmt.Println("User profile created successfully")
 	return &domain.UserProfile{
-		UserId:          profile.UserID,
-		FullName:        fullname,
-		CurrentJob:      currentjob,
-		ExperienceLevel: experience,
-		Goals:           profile.Goals,
-		UpdatedAt:       profile.UpdatedAt.Time,
+		UserId:            profile.UserID,
+		FullName:          fullname,
+		CurrentJob:        currentjob,
+		ExperienceLevel:   experience,
+		Goals:             profile.Goals,
+		JobSearchLocation: profile.JobSearchLocation,
+		HasCV:             len(profile.Cv) > 0,
+		UpdatedAt:         profile.UpdatedAt.Time,
 	}, nil
 }
 
@@ -296,13 +339,22 @@ func (r *userRepository) GetUserProfileByID(ctx context.Context, userId int32) (
 	}
 
 	return &domain.UserProfile{
-		UserId:          profile.UserID,
-		FullName:        fullname,
-		CurrentJob:      currentjob,
-		ExperienceLevel: experience,
-		Goals:           profile.Goals,
-		UpdatedAt:       profile.UpdatedAt.Time,
+		UserId:            profile.UserID,
+		FullName:          fullname,
+		CurrentJob:        currentjob,
+		ExperienceLevel:   experience,
+		Goals:             profile.Goals,
+		JobSearchLocation: profile.JobSearchLocation,
+		HasCV:             len(profile.Cv) > 0,
+		UpdatedAt:         profile.UpdatedAt.Time,
 	}, nil
+}
+
+func (r *userRepository) UpdateUserJobSearchLocation(ctx context.Context, userID int32, jobSearchLocation string) error {
+	return r.queries.UpdateUserJobSearchLocation(ctx, db.UpdateUserJobSearchLocationParams{
+		UserID:            userID,
+		JobSearchLocation: jobSearchLocation,
+	})
 }
 
 func (r *userRepository) UpdateUserProfile(ctx context.Context, userId int32, fullName, currentJob, experienceLevel *string, goals []string) (*domain.UserProfile, error) {
@@ -318,12 +370,14 @@ func (r *userRepository) UpdateUserProfile(ctx context.Context, userId int32, fu
 	}
 
 	return &domain.UserProfile{
-		UserId:          profile.UserID,
-		FullName:        *profile.FullName,
-		CurrentJob:      *profile.CurrentJob,
-		ExperienceLevel: *profile.ExperienceLevel,
-		Goals:           profile.Goals,
-		UpdatedAt:       profile.UpdatedAt.Time,
+		UserId:            profile.UserID,
+		FullName:          *profile.FullName,
+		CurrentJob:        *profile.CurrentJob,
+		ExperienceLevel:   *profile.ExperienceLevel,
+		Goals:             profile.Goals,
+		JobSearchLocation: profile.JobSearchLocation,
+		HasCV:             len(profile.Cv) > 0,
+		UpdatedAt:         profile.UpdatedAt.Time,
 	}, nil
 }
 
@@ -344,6 +398,17 @@ func (r *userRepository) UploadCV(ctx context.Context, userId int32, data []byte
 		return domain.ErrInternalServer
 	}
 	return nil
+}
+
+func (r *userRepository) GetUserCV(ctx context.Context, userID int32) ([]byte, error) {
+	cv, err := r.queries.GetUserCV(ctx, userID)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, domain.ErrUserNotFound
+		}
+		return nil, domain.ErrInternalServer
+	}
+	return cv, nil
 }
 
 //func (r *userRepository) GetCV(ctx context.Context, userId int32) (byt)

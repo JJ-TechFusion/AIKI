@@ -1,0 +1,1 @@
+-- Intentionally empty: do not drop serp_job_cache here (may contain user data).

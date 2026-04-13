@@ -4,8 +4,10 @@ import (
 	"aiki/internal/database/db"
 	"aiki/internal/domain"
 	"context"
+	"errors"
 	"time"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -14,7 +16,7 @@ type SerpJobRepository interface {
 	GetCachedJobs(ctx context.Context, userID int32, limit, offset int32) ([]domain.SerpJobCache, error)
 	GetCachedJobByID(ctx context.Context, jobID, userID int32) (*domain.SerpJobCache, error)
 	GetLatestFetchTime(ctx context.Context, userID int32) (*time.Time, error)
-	MarkSavedToTracker(ctx context.Context, jobID, userID int32) error
+	MarkSavedToTracker(ctx context.Context, cacheID, userID, trackerJobID int32) error
 	DeleteOldCache(ctx context.Context, userID int32) error
 }
 
@@ -28,9 +30,16 @@ func NewSerpJobRepository(dbPool *pgxpool.Pool) SerpJobRepository {
 }
 
 func (r *serpJobRepository) UpsertJobs(ctx context.Context, userID int32, jobs []domain.SerpJob) ([]domain.SerpJobCache, error) {
+	tx, err := r.db.Begin(ctx)
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+
+	qtx := r.queries.WithTx(tx)
 	cached := make([]domain.SerpJobCache, 0, len(jobs))
 	for _, job := range jobs {
-		row, err := r.queries.UpsertSerpJobCache(ctx, db.UpsertSerpJobCacheParams{
+		row, err := qtx.UpsertSerpJobCache(ctx, db.UpsertSerpJobCacheParams{
 			UserID:      userID,
 			ExternalID:  job.ExternalID,
 			Title:       job.Title,
@@ -46,6 +55,9 @@ func (r *serpJobRepository) UpsertJobs(ctx context.Context, userID int32, jobs [
 			return nil, err
 		}
 		cached = append(cached, mapSerpJob(row))
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return nil, err
 	}
 	return cached, nil
 }
@@ -73,6 +85,9 @@ func (r *serpJobRepository) GetCachedJobByID(ctx context.Context, jobID, userID 
 		UserID: userID,
 	})
 	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, domain.ErrInvalidJobID
+		}
 		return nil, err
 	}
 	c := mapSerpJob(row)
@@ -90,10 +105,12 @@ func (r *serpJobRepository) GetLatestFetchTime(ctx context.Context, userID int32
 	return &ts.Time, nil
 }
 
-func (r *serpJobRepository) MarkSavedToTracker(ctx context.Context, jobID, userID int32) error {
+func (r *serpJobRepository) MarkSavedToTracker(ctx context.Context, cacheID, userID, trackerJobID int32) error {
+	tid := trackerJobID
 	return r.queries.MarkJobSavedToTracker(ctx, db.MarkJobSavedToTrackerParams{
-		ID:     jobID,
-		UserID: userID,
+		ID:           cacheID,
+		UserID:       userID,
+		TrackerJobID: &tid,
 	})
 }
 
@@ -119,6 +136,7 @@ func mapSerpJob(r db.SerpJobCache) domain.SerpJobCache {
 		PostedAt:       derefString(r.PostedAt),
 		Salary:         derefString(r.Salary),
 		SavedToTracker: r.SavedToTracker,
+		TrackerJobID:   r.TrackerJobID,
 		FetchedAt:      r.FetchedAt.Time,
 	}
 }

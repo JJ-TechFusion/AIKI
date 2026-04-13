@@ -24,6 +24,19 @@ type MockAuthService struct {
 	mock.Mock
 }
 
+type noopEmailVerificationService struct{}
+
+func (noopEmailVerificationService) SendVerification(ctx context.Context, userID int32) (*domain.EmailVerificationResponse, error) {
+	return &domain.EmailVerificationResponse{
+		ExpiresInSeconds: 600,
+		ResendInSeconds:  60,
+	}, nil
+}
+
+func (noopEmailVerificationService) VerifyEmail(ctx context.Context, userID int32, otp string) error {
+	return nil
+}
+
 func (m *MockAuthService) ResetPassword(ctx context.Context, email, newPassword string) error {
 	//TODO implement me
 	return nil
@@ -90,7 +103,13 @@ func TestAuthHandler_Register(t *testing.T) {
 		DB:       0,
 		Port:     "6379",
 	})
-	handler := NewAuthHandler(mockService, e.Validator, redisCache, config.Config{})
+	handler := NewAuthHandler(
+		mockService,
+		noopEmailVerificationService{},
+		e.Validator,
+		redisCache,
+		config.Config{},
+	)
 
 	t.Run("successful registration", func(t *testing.T) {
 		reqBody := domain.RegisterRequest{
@@ -162,7 +181,13 @@ func TestAuthHandler_Login(t *testing.T) {
 		DB:       0,
 		Port:     "6379",
 	})
-	handler := NewAuthHandler(mockService, e.Validator, redisCache, config.Config{})
+	handler := NewAuthHandler(
+		mockService,
+		noopEmailVerificationService{},
+		e.Validator,
+		redisCache,
+		config.Config{},
+	)
 
 	t.Run("successful login", func(t *testing.T) {
 		reqBody := domain.LoginRequest{
@@ -227,7 +252,13 @@ func TestAuthHandler_RefreshToken(t *testing.T) {
 		DB:       0,
 		Port:     "6379",
 	})
-	handler := NewAuthHandler(mockService, e.Validator, redisCache, config.Config{})
+	handler := NewAuthHandler(
+		mockService,
+		noopEmailVerificationService{},
+		e.Validator,
+		redisCache,
+		config.Config{},
+	)
 
 	t.Run("successful token refresh", func(t *testing.T) {
 		reqBody := domain.RefreshTokenRequest{
@@ -265,7 +296,13 @@ func TestAuthHandler_Logout(t *testing.T) {
 		DB:       0,
 		Port:     "6379",
 	})
-	handler := NewAuthHandler(mockService, e.Validator, redisCache, config.Config{})
+	handler := NewAuthHandler(
+		mockService,
+		noopEmailVerificationService{},
+		e.Validator,
+		redisCache,
+		config.Config{},
+	)
 
 	t.Run("successful logout", func(t *testing.T) {
 		reqBody := domain.RefreshTokenRequest{

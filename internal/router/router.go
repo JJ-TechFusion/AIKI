@@ -32,6 +32,10 @@ func Setup(
 		auth.POST("/login", authHandler.Login)
 		auth.POST("/refresh", authHandler.RefreshToken)
 		auth.POST("/logout", authHandler.Logout)
+		authProtected := auth.Group("")
+		authProtected.Use(middleware.Auth(jwtManager))
+		authProtected.POST("/verify-email", authHandler.VerifyEmail)
+		authProtected.POST("/verify-email/resend", authHandler.ResendEmailVerification)
 		auth.GET("/linkedin/login", authHandler.LinkedInLogin)
 		auth.GET("/linkedin/callback", authHandler.LinkedInCallback)
 		auth.POST("/forgot-password", authHandler.ForgottenPassword)
@@ -46,23 +50,26 @@ func Setup(
 		users.GET("/me", userHandler.GetMe)
 		users.PUT("/me", userHandler.UpdateMe)
 		users.POST("/profile", userHandler.CreateProfile)
+		users.GET("/profile", userHandler.GetProfile)
 		users.PATCH("/profile", userHandler.UpdateProfile)
 		users.POST("/upload/cv", userHandler.UploadCV)
+		users.GET("/cv", userHandler.GetCV)
 	}
 
 	// Jobs (manual tracker)
 	jobs := api.Group("/jobs")
 	jobs.Use(middleware.Auth(jwtManager))
 	{
+		// Serp routes (static paths before /:id so "recommended" is not parsed as an id)
+		jobs.GET("/recommended", serpHandler.GetRecommendedJobs)
+		jobs.POST("/recommended/:id/save", serpHandler.SaveJobToTracker)
+		jobs.POST("/recommended/:id/apply", serpHandler.ApplyRecommendedJob)
+
 		jobs.POST("", jobHandler.CreateJob)
 		jobs.GET("", jobHandler.GetAllJobs)
 		jobs.GET("/:id", jobHandler.GetJob)
 		jobs.PUT("/:id", jobHandler.UpdateJob)
 		jobs.DELETE("/:id", jobHandler.DeleteJob)
-
-		// Job recommendations via SerpApi
-		jobs.GET("/recommended", serpHandler.GetRecommendedJobs)
-		jobs.POST("/recommended/:id/save", serpHandler.SaveJobToTracker)
 	}
 
 	// Home screen

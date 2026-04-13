@@ -29,6 +29,7 @@ type Querier interface {
 	GetActiveSession(ctx context.Context, userID int32) (FocusSession, error)
 	GetAllBadgeDefinitions(ctx context.Context) ([]BadgeDefinition, error)
 	GetCachedJobByID(ctx context.Context, arg GetCachedJobByIDParams) (SerpJobCache, error)
+	GetCachedJobByTrackerID(ctx context.Context, arg GetCachedJobByTrackerIDParams) (SerpJobCache, error)
 	GetCachedJobsByUserID(ctx context.Context, arg GetCachedJobsByUserIDParams) ([]SerpJobCache, error)
 	GetFocusSessionByID(ctx context.Context, id int32) (FocusSession, error)
 	GetJobByID(ctx context.Context, id int32) (Job, error)
@@ -42,6 +43,7 @@ type Querier interface {
 	GetUserBadges(ctx context.Context, userID int32) ([]GetUserBadgesRow, error)
 	GetUserByEmail(ctx context.Context, email string) (User, error)
 	GetUserByID(ctx context.Context, id int32) (User, error)
+	GetUserCV(ctx context.Context, userID int32) ([]byte, error)
 	GetUserNotifications(ctx context.Context, arg GetUserNotificationsParams) ([]Notification, error)
 	GetUserProfileByUserID(ctx context.Context, userID int32) (UserProfile, error)
 	GetUserSessionHistory(ctx context.Context, arg GetUserSessionHistoryParams) ([]FocusSession, error)
@@ -52,6 +54,7 @@ type Querier interface {
 	UpdateFocusSession(ctx context.Context, arg UpdateFocusSessionParams) (FocusSession, error)
 	UpdateJobByID(ctx context.Context, arg UpdateJobByIDParams) error
 	UpdateUser(ctx context.Context, arg UpdateUserParams) (User, error)
+	UpdateUserJobSearchLocation(ctx context.Context, arg UpdateUserJobSearchLocationParams) error
 	UpdateUserProfile(ctx context.Context, arg UpdateUserProfileParams) (UserProfile, error)
 	UploadUserCV(ctx context.Context, arg UploadUserCVParams) (UserProfile, error)
 	UpsertDailyProgress(ctx context.Context, arg UpsertDailyProgressParams) error

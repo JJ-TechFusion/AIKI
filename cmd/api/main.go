@@ -17,6 +17,7 @@ import (
 	"aiki/internal/handler"
 	"aiki/internal/middleware"
 	"aiki/internal/pkg/jwt"
+	"aiki/internal/pkg/mailer"
 	"aiki/internal/pkg/scheduler"
 	"aiki/internal/pkg/validator"
 	"aiki/internal/repository"
@@ -73,7 +74,18 @@ func main() {
 
 	// Services
 	serpClient := serp.NewClient(cfg.SerpAPI.Key)
+	emailSender := mailer.NewResendSender(
+		cfg.Email.ResendAPIKey,
+		cfg.Email.FromEmail,
+		cfg.Email.FromName,
+	)
 	authService := service.NewAuthService(userRepo, jwtManager)
+	emailVerificationService := service.NewEmailVerificationService(
+		userRepo,
+		redis,
+		emailSender,
+		cfg.Server.Env,
+	)
 	userService := service.NewUserService(userRepo)
 	jobService := service.NewJobService(jobRepo)
 	notifService := service.NewNotificationService(notifRepo)
@@ -102,7 +114,13 @@ func main() {
 	e.GET("/swagger/*", echo.WrapHandler(httpSwagger.WrapHandler))
 
 	// Handlers
-	authHandler := handler.NewAuthHandler(authService, e.Validator, redis, *cfg)
+	authHandler := handler.NewAuthHandler(
+		authService,
+		emailVerificationService,
+		e.Validator,
+		redis,
+		*cfg,
+	)
 	userHandler := handler.NewUserHandler(userService, e.Validator)
 	jobHandler := handler.NewJobHandler(jobService, e.Validator)
 	homeHandler := handler.NewHomeHandler(homeService, e.Validator)
